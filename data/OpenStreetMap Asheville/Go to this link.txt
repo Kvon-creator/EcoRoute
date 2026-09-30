@@ -1,0 +1,5 @@
+https://www.openstreetmap.org/relation/180348#map=11/35.5305/-82.4036
+
+This link contains the open street map data for Asheville. I will provide the gemini link I was using to help whoever looks over this figure out how to affectively use the link:
+
+https://share.gemini.google/q3cJgdjfNT7a
