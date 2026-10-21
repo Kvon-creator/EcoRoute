@@ -1,0 +1,45 @@
+{
+  "sample_file": "extracted/VED_171101_week.csv",
+  "source_commit": "6baa4963782d515a67d32a5490bd5d11f5d9bf0d",
+  "rows": 489414,
+  "columns": [
+    "DayNum",
+    "VehId",
+    "Trip",
+    "Timestamp(ms)",
+    "Latitude[deg]",
+    "Longitude[deg]",
+    "Vehicle Speed[km/h]",
+    "MAF[g/sec]",
+    "Engine RPM[RPM]",
+    "Absolute Load[%]",
+    "OAT[DegC]",
+    "Fuel Rate[L/hr]",
+    "Air Conditioning Power[kW]",
+    "Air Conditioning Power[Watts]",
+    "Heater Power[Watts]",
+    "HV Battery Current[A]",
+    "HV Battery SOC[%]",
+    "HV Battery Voltage[V]",
+    "Short Term Fuel Trim Bank 1[%]",
+    "Short Term Fuel Trim Bank 2[%]",
+    "Long Term Fuel Trim Bank 1[%]",
+    "Long Term Fuel Trim Bank 2[%]"
+  ],
+  "vehicles": 258,
+  "finite_value_counts": {
+    "MAF[g/sec]": 399747,
+    "Vehicle Speed[km/h]": 488657,
+    "Latitude[deg]": 489414,
+    "Longitude[deg]": 489414,
+    "Fuel Rate[L/hr]": 16073,
+    "zero_fuel_rates": 13958
+  },
+  "vehicles_with_finite_fuel_rate": 6,
+  "vehicle_trip_pairs_with_finite_fuel_rate": 22,
+  "fuel_rate_range_liters_per_hour": [
+    0.0,
+    10.9137144089
+  ],
+  "scope": "First weekly CSV only, not the full dataset. Finite fuel readings are not independently validated ground truth."
+}
