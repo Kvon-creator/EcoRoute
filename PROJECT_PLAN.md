@@ -115,6 +115,37 @@ In a fresh local Python 3.12.14 virtual environment, the updated requirements in
 
 `git diff --check` passed. Ignore checks confirmed generated graph/cache/model paths are ignored while proposed metadata paths remain trackable. Source, tests, README and raw data match the baseline. No street graph was downloaded, raster retrieved, model trained, or UI implemented. Data findings above came from the CSV, pointer text, reference text files and PDF text extraction; the report's graphical layout and raster contents were not validated.
 
+## Dashboard implementation progress
+
+The earlier inventory is the audit baseline. Subsequent work added and tested
+`src/routing.py`, then transferred the work and VED downloads to the OneDrive
+VS Code checkout. The existing solver remains unchanged.
+
+`app.py` now provides source-data review plus route-comparison controls. Actual
+CSV previews and saved inspection counts are available immediately. Missing
+Asheville artifacts disable routing rather than generating fake results.
+`src/dashboard.py` supports prepared GraphML with precomputed fuel weights,
+checksum/provenance metadata, and exact selected-edge geometry. This avoids
+depending on an unfinished Joblib feature adapter. No live model inference,
+coordinate snapping, address lookup, or model training has been implemented.
+
+`src/evaluation.py` and `scripts/run_evaluation.py` prepare the 10-20-pair
+evaluation workflow and retain failures. No actual Asheville benchmark was run
+because the prepared graph, prediction metadata, and real node pairs are absent.
+See README.md for the implemented file contract and commands.
+
+Validation of this stage: a new `.venv` in the VS Code checkout uses Python
+3.12.14; declared requirements installed successfully and `pip check` passed.
+The complete suite passed 37 tests, with three existing third-party SWIG
+deprecation warnings. Streamlit AppTest verified the actual local VED and Fleet
+DNA previews. Fixture tests exercised route rendering, missing artifacts,
+checksum errors, and unreachable nodes. A running local Streamlit server
+returned HTTP 200 from its health endpoint. Browser visual inspection was not
+available; interactive map appearance still needs a manual check with real
+artifacts. Invoking evaluation with current files failed as expected on missing
+fuel metadata and produced no benchmark CSV. No source dataset, solver code,
+requirements, or ignore rules were changed in this stage.
+
 ## API references
 
 - [OSMnx user reference](https://osmnx.readthedocs.io/en/stable/user-reference.html): graph acquisition, GraphML IO, nearest nodes, speed/elevation attributes.
