@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Rebuildable GIS downloads, processed graphs, and trained models.
+/cache/
+/data/processed/
+/models/*.joblib
+
+# VED source archives/spreadsheets and extracted telemetry are reproducible downloads.
+/data/VED/raw/
+/data/VED/extracted/

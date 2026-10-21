@@ -1,0 +1,56 @@
+{
+  "repository": "https://github.com/gsoh/VED",
+  "commit": "6baa4963782d515a67d32a5490bd5d11f5d9bf0d",
+  "verified_at_utc": "2026-10-21T18:35:58.520330+00:00",
+  "license": "Apache-2.0; original license retained in source/LICENSE",
+  "files": [
+    {
+      "source_path": "Data/VED_DynamicData_Part1.7z",
+      "local_path": "raw/VED_DynamicData_Part1.7z",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/Data/VED_DynamicData_Part1.7z",
+      "size_bytes": 82723769,
+      "git_blob_sha1": "047f71f8e9d7282d14bb3b94a2113b663e3c2b15",
+      "sha256": "44d53754fd39e196171ec09f123604375d0248d5c06a97d6695ef0e22a948c61"
+    },
+    {
+      "source_path": "Data/VED_DynamicData_Part2.7z",
+      "local_path": "raw/VED_DynamicData_Part2.7z",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/Data/VED_DynamicData_Part2.7z",
+      "size_bytes": 93662910,
+      "git_blob_sha1": "100798b2149fcd0d6f7ab555361001def7e36f91",
+      "sha256": "a235c894e619a9e06b6c28c6e68593e26f4b168265cd2c45a0f3a43e646bc701"
+    },
+    {
+      "source_path": "Data/VED_Static_Data_ICE&HEV.xlsx",
+      "local_path": "raw/VED_Static_Data_ICE&HEV.xlsx",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/Data/VED_Static_Data_ICE%26HEV.xlsx",
+      "size_bytes": 21193,
+      "git_blob_sha1": "337898103e1239aa3c1a46200d823e5d20a42039",
+      "sha256": "addb23d937ef7d943620755f478cc5a24316a7d61dee232ffbfd9b6e50986dae"
+    },
+    {
+      "source_path": "Data/VED_Static_Data_PHEV&EV.xlsx",
+      "local_path": "raw/VED_Static_Data_PHEV&EV.xlsx",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/Data/VED_Static_Data_PHEV%26EV.xlsx",
+      "size_bytes": 9763,
+      "git_blob_sha1": "04228e4037204cff6010ee1e425a1aa9cc8e6bb7",
+      "sha256": "e0f2b4d7a360074c17fd00068d8d8bf898f0e650f0cdda43c7e10883f6bf9340"
+    },
+    {
+      "source_path": "LICENSE",
+      "local_path": "source/LICENSE",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/LICENSE",
+      "size_bytes": 11346,
+      "git_blob_sha1": "b15b72576c09c4ab38f96790a46e573cc57d71d9",
+      "sha256": "9856fba4809707af8aa4a3a224a881c8dc2a06f487ab4b6644cab5647934c388"
+    },
+    {
+      "source_path": "README.md",
+      "local_path": "source/README.md",
+      "url": "https://raw.githubusercontent.com/gsoh/VED/6baa4963782d515a67d32a5490bd5d11f5d9bf0d/README.md",
+      "size_bytes": 3044,
+      "git_blob_sha1": "780198a62846431e460cd423ab52b75e1ad70dda",
+      "sha256": "c0f216828cd727635cea6fe46931033e9cdc823f7066f8b3685364aacb56d3bd"
+    }
+  ]
+}
