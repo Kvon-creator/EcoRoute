@@ -2,7 +2,8 @@
 
 Point-to-point route comparison for a small Asheville study area is under
 development. The existing `main.py` remains a separate synthetic fleet-solver
-demo. No Asheville fuel predictions or dashboard are available yet.
+demo. A Streamlit dashboard can review current source data. Asheville route
+predictions still require a prepared graph and compatible fuel costs.
 
 ## Setup and checks
 
@@ -45,9 +46,9 @@ Run only the independent routing tests with:
 ```
 
 The tests use artificial graphs and costs to verify routing behavior. They do
-not measure Asheville fuel savings. Real graph/model loading, feature adapters,
-coordinate snapping, and the Streamlit UI remain unimplemented. See
-`PROJECT_PLAN.md` for ownership and data gaps.
+not measure Asheville fuel savings. The dashboard can load a prepared GraphML
+file with precomputed costs; live model inference, feature adapters and coordinate
+snapping remain unimplemented. See `PROJECT_PLAN.md` for ownership and data gaps.
 
 ## Downloaded fuel-data candidate
 
@@ -57,3 +58,52 @@ extracted and inspected. Fuel labels are sparse in that sample; this is a
 training-data candidate, not a trained model or Asheville prediction output.
 See `data/VED/README.md` for provenance, verified downloads, inspection results,
 and reproduction commands.
+
+## Dashboard
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+The Current data tab shows bounded previews of the real VED and Fleet DNA CSVs,
+the saved first-week inspection, and missing fuel readings. VED is identified as
+Ann Arbor data. Source previews do not produce fuel predictions. No model is
+trained and no dataset is downloaded during a UI rerun.
+
+Route comparison stays disabled until both of these locally prepared artifacts
+exist:
+
+- `data/processed/asheville.graphml`: directed OSMnx MultiDiGraph in EPSG:4326.
+  Nodes need numeric longitude `x` and latitude `y`. Every edge needs positive
+  `length` in meters and finite nonnegative `fuel_liters` predicted offline with
+  one model and vehicle profile. Actual road geometry is used where provided;
+  other segments are drawn between endpoints.
+- `data/processed/fuel_metadata.json`: JSON object containing `graph_sha256`
+  (SHA-256 of the GraphML file), `model_id`, `vehicle_profile`, `fuel_unit`
+  (`liters`), and `prediction_source` (`measured-trained` or
+  `simulation-trained`). This records team-provided provenance, not independently
+  validated accuracy. Do not create metadata to pass off test weights as a model.
+
+The app checks the checksum and caches loading by both artifact content hashes.
+Select existing road node IDs and calculate to see a blue shortest route, a
+green lowest-predicted-fuel route, metrics, a table and a fuel comparison chart.
+Map tiles require internet; prepared routing computation is local. Loading a
+Joblib model and converting its predictions onto edges remains a later ML
+integration step. Nothing automatically trains or infers from VED files.
+
+## Evaluation preparation
+
+`src/evaluation.py` records successful, identical, and failed route comparisons.
+Once the prepared graph and metadata exist, supply a CSV with `origin` and
+`destination` columns and 10-20 node-ID pairs:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/run_evaluation.py --pairs data/evaluation_pairs.csv
+```
+
+The pair CSV must be created from the real graph; none is fabricated in this
+change. Output defaults to `data/processed/route_evaluation.csv` and includes
+distances, predicted fuel, predicted savings, errors, and artifact provenance.
+Missing graph/metadata stops the command without generating benchmark results.
+Optimizing and evaluating with the same model does not establish measured
+real-world savings.
