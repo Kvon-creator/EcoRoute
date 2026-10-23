@@ -152,6 +152,27 @@ artifacts. Invoking evaluation with current files failed as expected on missing
 fuel metadata and produced no benchmark CSV. No source dataset, solver code,
 requirements, or ignore rules were changed in this stage.
 
+## Fairview GIS preparation
+
+Work on `feat/fairview-gis-data` downloaded and source-MD5-verified the USGS
+`n36w083` raster already referenced by the project. Its bounds cover the whole
+study box. The local graph now contains 779 nodes and 1,652 directed edges,
+with one strongly connected component. Saved GraphML was reloaded, all node
+elevations resampled and compared, and signed grades checked against their
+endpoint elevations. The report is `data/GIS/fairview_build_report.json`.
+The raw raster and generated graph are ignored local artifacts; fetch/build/
+inspection scripts and source manifests make the preparation reviewable.
+
+No fuel costs or `fuel_metadata.json` were created. Existing blockers now concern
+ML inputs and predictions, not the basic GIS graph. Historical elevation and
+endpoint-average grades should be considered when interpreting a future model.
+
+Validation: 50 tests passed (three existing SWIG deprecation warnings). The
+initial run hit permissions on the system pytest temporary directory; rerunning
+with a fresh temporary directory inside the writable Codex workspace passed.
+The live graph also passed raster resampling, full-box coverage, saved-grade
+consistency, and GraphML reload checks.
+
 ## API references
 
 - [OSMnx user reference](https://osmnx.readthedocs.io/en/stable/user-reference.html): graph acquisition, GraphML IO, nearest nodes, speed/elevation attributes.

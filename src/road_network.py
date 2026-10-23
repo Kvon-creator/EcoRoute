@@ -87,11 +87,18 @@ def add_node_elevations(
 
             lon = float(data["x"])
             lat = float(data["y"])
+            if not (np.isfinite(lon) and np.isfinite(lat)):
+                raise ValueError(f"Node {node_id} has nonfinite coordinates.")
 
             raster_x, raster_y = transformer.transform(
                 lon,
                 lat,
             )
+            if not (
+                dataset.bounds.left <= raster_x < dataset.bounds.right
+                and dataset.bounds.bottom < raster_y <= dataset.bounds.top
+            ):
+                raise ValueError(f"Elevation raster does not cover node {node_id}.")
 
             node_ids.append(node_id)
             coordinates.append(
@@ -100,13 +107,16 @@ def add_node_elevations(
 
         #Sample the USGS raster at every road-node location.
         samples = list(
-            dataset.sample(coordinates)
+            dataset.sample(coordinates, masked=True)
         )
 
+        elevations = {}
         for node_id, sample in zip(
             node_ids,
             samples,
         ):
+            if np.ma.is_masked(sample[0]):
+                raise ValueError(f"Missing elevation for node {node_id}.")
             elevation = float(sample[0])
 
             #Reject missing values instead of inventing elevation data.
@@ -126,9 +136,10 @@ def add_node_elevations(
                     f"Invalid elevation for node {node_id}."
                 )
 
-            graph.nodes[node_id]["elevation"] = (
-                elevation
-            )
+            elevations[node_id] = elevation
+
+        #Only mutate the graph after every sample has passed validation.
+        nx.set_node_attributes(graph, elevations, "elevation")
 
     return graph
 
@@ -178,6 +189,8 @@ def add_edge_grades(graph):
         elevation_v = float(
             graph.nodes[v]["elevation"]
         )
+        if not (np.isfinite(elevation_u) and np.isfinite(elevation_v)):
+            raise ValueError(f"Edge {(u, v, key)} has nonfinite endpoint elevations.")
 
         #Positive grade means uphill; negative grade means downhill.
         grade = (
@@ -205,6 +218,9 @@ def validate_graph(graph):
             "EcoRoute requires a directed MultiDiGraph."
         )
 
+    if graph.number_of_nodes() == 0 or graph.number_of_edges() == 0:
+        raise ValueError("Prepared graph must contain road nodes and edges.")
+
     for node_id, data in graph.nodes(
         data=True
     ):
@@ -219,6 +235,8 @@ def validate_graph(graph):
                 raise ValueError(
                     f"Node {node_id} missing {attribute}."
                 )
+            if not np.isfinite(float(data[attribute])):
+                raise ValueError(f"Node {node_id} has invalid {attribute}.")
 
     for u, v, key, data in graph.edges(
         keys=True,
@@ -247,6 +265,11 @@ def validate_graph(graph):
                 f"Invalid edge length on "
                 f"{(u, v, key)}."
             )
+        grade, grade_abs = float(data["grade"]), float(data["grade_abs"])
+        if not (np.isfinite(grade) and np.isfinite(grade_abs)):
+            raise ValueError(f"Invalid edge grade on {(u, v, key)}.")
+        if not np.isclose(abs(grade), grade_abs):
+            raise ValueError(f"Inconsistent signed/absolute grades on {(u, v, key)}.")
 
     return True
 
