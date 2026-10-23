@@ -9,3 +9,7 @@ osmnx>=2.0,<3
 scikit-learn>=1.5,<2
 streamlit>=1.40,<2
 joblib>=1.4,<2
+
+#GIS dependencies for USGS elevation sampling and coordinate conversion.
+rasterio>=1.4,<2
+pyproj>=3.7,<4
