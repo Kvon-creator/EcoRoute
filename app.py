@@ -9,10 +9,11 @@ import pydeck as pdk
 import streamlit as st
 
 from src.dashboard import (
-    comparison_rows, file_digest, load_prepared_graph, read_preview, route_paths,
+    comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths,
 )
 from src.routing import compare_routes
-from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL
+from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL, FAIRVIEW_CENTER
+from src.road_network import DEFAULT_DEM_PATH
 
 
 ROOT = Path(__file__).resolve().parent
@@ -26,6 +27,37 @@ FLEET = ROOT / "data/NLR Delivery Truck Data/data_for_fleet_dna_delivery_trucks.
 def cached_graph(graph_path: str, metadata_path: str, graph_hash: str, metadata_hash: str):
     # Content hashes invalidate the cache when either artifact changes.
     return load_prepared_graph(Path(graph_path), Path(metadata_path))
+
+
+@st.cache_resource(max_entries=4)
+def cached_gis_preview(graph_path: str, graph_hash: str):
+    return load_gis_preview(Path(graph_path))
+
+
+def render_gis_preview():
+    try:
+        graph, features = cached_gis_preview(str(GRAPH), file_digest(GRAPH))
+    except Exception as exc:
+        st.error(f"Cannot display the GIS graph: {exc}")
+        return
+    st.subheader("Fairview road network")
+    st.caption("GIS preview: actual roads and sampled elevations. Fuel predictions are not available yet.")
+    nodes, edges, elevation = st.columns(3)
+    nodes.metric("Road nodes", f"{graph.number_of_nodes():,}")
+    edges.metric("Directed road edges", f"{graph.number_of_edges():,}")
+    heights = [float(attrs["elevation"]) for _, attrs in graph.nodes(data=True)]
+    elevation.metric("Elevation range", f"{min(heights):.0f}-{max(heights):.0f} m")
+    st.pydeck_chart(pdk.Deck(
+        layers=[pdk.Layer("GeoJsonLayer", data=features, stroked=True, filled=False,
+                          get_line_color=[35, 100, 220], get_line_width=3,
+                          line_width_units=pdk.types.String("pixels"),
+                          line_width_min_pixels=1, line_width_max_pixels=4,
+                          pickable=True)],
+        map_provider="carto", map_style="light",
+        initial_view_state=pdk.ViewState(latitude=FAIRVIEW_CENTER[0], longitude=FAIRVIEW_CENTER[1], zoom=12),
+        tooltip={"text": "Length: {length} m\nSigned grade: {grade_percent}%"},
+    ), key="fairview-gis-map", alt="Fairview driving network with road lengths and signed slopes")
+    st.caption("Roads: OpenStreetMap contributors. Elevations: USGS. Hover over a road for length and slope; map tiles require internet.")
 
 
 @st.cache_data
@@ -63,13 +95,14 @@ def render_comparison(graph, metadata):
         return
     st.caption("Blue: shortest distance. Green: lowest predicted fuel. Overlapping routes may hide one color.")
     layer = pdk.Layer("PathLayer", segments, get_path="path", get_color="color",
-                      get_width=5, width_units="pixels", pickable=True)
+                      get_width=5, width_units=pdk.types.String("pixels"),
+                      width_min_pixels=2, width_max_pixels=5, pickable=True)
     marker = pdk.Layer(
         "ScatterplotLayer",
         [{"position": [graph.nodes[n]["x"], graph.nodes[n]["y"]], "route": label}
          for n, label in ((origin, "Origin"), (destination, "Destination"))],
         get_position="position", get_fill_color=[240, 155, 35],
-        get_radius=8, radius_units="pixels", pickable=True,
+        get_radius=8, radius_units=pdk.types.String("pixels"), pickable=True,
     )
     st.pydeck_chart(pdk.Deck(
         layers=[layer, marker], map_provider="carto", map_style="light",
@@ -91,11 +124,16 @@ def render_comparison(graph, metadata):
 
 def render_routes():
     if not GRAPH.is_file() or not METADATA.is_file():
-        st.info("Fairview comparison is waiting for a prepared road graph with fuel predictions.")
+        if GRAPH.is_file():
+            render_gis_preview()
+            st.info("The Fairview graph is ready. Fuel comparison is waiting for model predictions and fuel metadata.")
+        else:
+            st.info("Fairview comparison is waiting for a prepared road graph with fuel predictions.")
         for path in (GRAPH, METADATA):
             st.write(f"{'Found' if path.is_file() else 'Missing'}: `{path.relative_to(ROOT).as_posix()}`")
-        st.selectbox("Origin road node", [], disabled=True, placeholder="Road graph required")
-        st.selectbox("Destination road node", [], disabled=True, placeholder="Road graph required")
+        waiting_for = "Fuel predictions required" if GRAPH.is_file() else "Road graph required"
+        st.selectbox("Origin road node", [], disabled=True, placeholder=waiting_for)
+        st.selectbox("Destination road node", [], disabled=True, placeholder=waiting_for)
         st.button("Calculate routes", disabled=True)
         st.caption("No route or savings values are generated from the current source-data files.")
         return
@@ -145,13 +183,16 @@ def render_data():
             st.error(f"Could not read source data: {exc}")
     else:
         st.info("No local preview CSV is available.")
-    raster = ROOT / "data/USGS/raw/USGS_13_n36w082_20260417.tif"
+    raster = ROOT / DEFAULT_DEM_PATH
     if raster.is_file():
         with raster.open("rb") as stream:
             pointer = stream.read(100).startswith(b"version https://git-lfs.github.com/spec/v1")
-        st.info("The existing elevation .tif is a Git LFS pointer; raster bytes are missing."
-                if pointer else "An elevation file is present; its coverage and contents still need GIS validation.")
-    st.caption("The saved OpenStreetMap reference is a download link, not a routable graph.")
+        st.info("The configured elevation file is a Git LFS pointer; raster bytes are missing."
+                if pointer else "The configured USGS elevation raster is present locally.")
+    if GRAPH.is_file():
+        st.caption("The prepared Fairview graph is available in the Route comparison tab.")
+    else:
+        st.caption("The saved OpenStreetMap reference is a download link, not a routable graph.")
 
 
 st.set_page_config(page_title="EcoRoute", layout="wide")

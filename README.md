@@ -103,7 +103,10 @@ the saved first-week inspection, and missing fuel readings. VED is identified as
 Ann Arbor data. Source previews do not produce fuel predictions. No model is
 trained and no dataset is downloaded during a UI rerun.
 
-Route comparison stays disabled until both of these locally prepared artifacts
+With the GIS graph alone, the Route comparison tab displays the real road
+network, node/edge counts, elevation range, and hover details for road length
+and signed slope. No model or fuel metadata is required for this GIS preview.
+Fuel comparison stays disabled until both of these locally prepared artifacts
 exist:
 
 - `data/processed/fairview.graphml`: directed OSMnx MultiDiGraph in EPSG:4326.
