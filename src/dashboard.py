@@ -15,6 +15,7 @@ import pandas as pd
 from pyproj import CRS
 
 from src.routing import RouteComparison, RouteResult
+from src.road_network import validate_graph
 
 
 def file_digest(path: Path) -> str:
@@ -41,6 +42,11 @@ def load_prepared_graph(graph_path: Path, metadata_path: Path):
         raise ValueError("Metadata must identify measured-trained or simulation-trained predictions.")
     if file_digest(graph_path) != metadata["graph_sha256"]:
         raise ValueError("Road graph does not match the fuel metadata checksum.")
+    return load_map_graph(graph_path), metadata
+
+
+def load_map_graph(graph_path: Path):
+    """Load geographic geometry without requiring or inventing fuel costs."""
     graph = ox.load_graphml(graph_path, edge_dtypes={"fuel_liters": float})
     if not isinstance(graph, nx.MultiDiGraph) or not graph.nodes:
         raise ValueError("The road graph must be a nonempty directed MultiDiGraph.")
@@ -53,7 +59,16 @@ def load_prepared_graph(graph_path: Path, metadata_path: Path):
             raise ValueError(f"Node {node!r} has invalid map coordinates.") from exc
         if not (isfinite(x) and isfinite(y) and -180 <= x <= 180 and -90 <= y <= 90):
             raise ValueError(f"Node {node!r} has invalid map coordinates.")
-    return graph, metadata
+    return graph
+
+
+def load_gis_preview(graph_path: Path):
+    graph = load_map_graph(graph_path)
+    validate_graph(graph)
+    edges = ox.graph_to_gdfs(graph, nodes=False)[["length", "grade", "geometry"]].copy()
+    edges["grade_percent"] = edges["grade"].astype(float) * 100
+    features = json.loads(edges[["length", "grade_percent", "geometry"]].to_json(drop_id=True))
+    return graph, features
 
 
 def comparison_rows(result: RouteComparison) -> list[dict]:

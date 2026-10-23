@@ -231,3 +231,4 @@ __marimo__/
 
 #Large USGS elevation raster downloaded locally.
 data/USGS/raw/USGS_13_n36w083_20171114.tif
+/data/USGS/raw/USGS_13_n36w083_20171114.tif.part

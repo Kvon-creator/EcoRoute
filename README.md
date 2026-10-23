@@ -65,16 +65,34 @@ The study area is Fairview, NC, centered on Azalea's coordinates
 `(35.5305, -82.4036)`. `src/study_area.py` shares the coordinates, graph path,
 and 5,000-meter bounding-box distance across GIS preparation and the app.
 The requested area is roughly 10 km across; it is not a municipal boundary.
-The default GIS build still requires the real
-`data/USGS/raw/USGS_13_n36w083_20171114.tif` raster and verified coverage.
-Run preparation from the repository root with:
+The Fairview GIS graph has been built locally: 779 nodes and 1,652 directed
+edges with real sampled elevations and signed grades. The saved graph reloads
+and all nodes are covered by the verified USGS raster. The graph currently has
+no predicted fuel costs. `data/GIS/fairview_build_report.json` records the
+checks, source URLs, units, versions, and artifact hashes.
+
+To reproduce from the repository root:
 
 ```powershell
+.\.venv\Scripts\python.exe -m scripts.fetch_fairview_dem
 .\.venv\Scripts\python.exe -m scripts.build_road_network
+.\.venv\Scripts\python.exe -m scripts.inspect_fairview_graph
 ```
 
 This downloads roads and builds the GIS graph; it does not predict fuel use.
 No old Asheville graph is automatically reused under the Fairview name.
+The 483 MB USGS raster and generated graph stay local and ignored by Git.
+The downloader checks the source MD5 and records SHA-256; USGS metadata in
+`data/USGS/fairview_dem_metadata.xml` confirms meters and NAVD88. Its publication
+date is 2017-11-14, so elevation is a historical surface rather than a current
+survey. Slopes are endpoint rise divided by edge length. Estimated speed
+(`speed_kph`) is not yet attached; the ML adapter must establish usable inputs.
+
+Raster sampling rejects out-of-coverage, masked/nodata, and nonfinite samples
+without partially changing node elevations. Full turn restrictions are not
+modeled. Fresh OSM downloads can change the graph; regenerate the build report
+after rebuilding. The GIS report is not `fuel_metadata.json` and must not be
+used as a substitute for prediction provenance.
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
@@ -85,7 +103,10 @@ the saved first-week inspection, and missing fuel readings. VED is identified as
 Ann Arbor data. Source previews do not produce fuel predictions. No model is
 trained and no dataset is downloaded during a UI rerun.
 
-Route comparison stays disabled until both of these locally prepared artifacts
+With the GIS graph alone, the Route comparison tab displays the real road
+network, node/edge counts, elevation range, and hover details for road length
+and signed slope. No model or fuel metadata is required for this GIS preview.
+Fuel comparison stays disabled until both of these locally prepared artifacts
 exist:
 
 - `data/processed/fairview.graphml`: directed OSMnx MultiDiGraph in EPSG:4326.

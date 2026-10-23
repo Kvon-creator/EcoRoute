@@ -1,0 +1,96 @@
+{
+  "verified_at_utc": "2026-10-23T15:54:55.175099+00:00",
+  "study_area": "Fairview, NC",
+  "center_lat_lon": [
+    35.5305,
+    -82.4036
+  ],
+  "distance_m": 5000,
+  "bbox_wgs84_west_south_east_north": [
+    -82.45885395647032,
+    35.48553398322536,
+    -82.34834604352967,
+    35.57546601677465
+  ],
+  "graph_path": "data/processed/fairview.graphml",
+  "graph_sha256": "c49a11630a2ea3b27daa51357d460930c26fcd2318b236420189c676a4320b79",
+  "graph_size_bytes": 1593080,
+  "graph_crs": "epsg:4326",
+  "osm_graph_created_date": "2026-10-23 11:50:30",
+  "osm_source": "https://overpass-api.de/api",
+  "osm_attribution": "OpenStreetMap contributors, ODbL",
+  "nodes": 779,
+  "directed_edges": 1652,
+  "weak_components": 1,
+  "strong_components": 1,
+  "oneway_edges": 10,
+  "elevation_range_m": [
+    658.6431274414062,
+    1332.93212890625
+  ],
+  "signed_grade_range": [
+    -0.22131187274008263,
+    0.22131187274008263
+  ],
+  "absolute_grade_percentiles_50_95_99_100": [
+    0.044471968554564936,
+    0.1409297134695648,
+    0.18291859269143268,
+    0.22131187274008263
+  ],
+  "edges_with_speed_kph": 0,
+  "edges_with_fuel_liters": 0,
+  "raster": {
+    "crs": "EPSG:4269",
+    "bounds": [
+      -83.00055555555541,
+      34.999444444716325,
+      -81.99944444471633,
+      36.0005555555554
+    ],
+    "pixel_size_degrees": [
+      9.259259256743215e-05,
+      9.259259256743215e-05
+    ],
+    "nodata": -999999.0
+  },
+  "raster_source": {
+    "source_url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/historical/n36w083/USGS_13_n36w083_20171114.tif",
+    "local_path": "data/USGS/raw/USGS_13_n36w083_20171114.tif",
+    "size_bytes": 482785065,
+    "source_md5": "f0700e93093cee1a4b1db033db0ca17d",
+    "sha256": "a49e1cedb295814005735786a1f1a766f5fc62863da0163a160311c7994e9680",
+    "source_etag": "\"fcaed1da6a01f631d1a9a9220983052d-93\"",
+    "source_last_modified": "Thu, 05 May 2022 17:13:59 GMT",
+    "verified_at_utc": "2026-10-23T15:54:50.484539+00:00",
+    "metadata_url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/historical/n36w083/USGS_13_n36w083_20171114.xml",
+    "metadata_path": "data/USGS/fairview_dem_metadata.xml",
+    "metadata_sha256": "3bf8473a670e434fc17ca93d1c195d2cbc48555c9f3a8ea35008ccbb94e0855e",
+    "elevation_unit": "meters",
+    "vertical_datum": "North American Vertical Datum of 1988",
+    "publication_date": "20171114"
+  },
+  "units": {
+    "length": "meters",
+    "elevation": "meters (USGS product metadata)",
+    "grade": "rise/run"
+  },
+  "checks": {
+    "all_nodes_covered_and_sampled": true,
+    "study_box_covered": true,
+    "saved_grades_match_elevations": true,
+    "graphml_reload": true
+  },
+  "versions": {
+    "osmnx": "2.1.1",
+    "networkx": "3.7",
+    "rasterio": "1.5.2",
+    "pyproj": "3.8.0"
+  },
+  "limitations": [
+    "Historical elevation raster; source publication date recorded in manifest.",
+    "Grade is endpoint rise divided by edge length, not a full road elevation profile.",
+    "One-way topology is retained; complete turn restrictions are not modeled.",
+    "GIS artifact only; no model, fuel predictions, or fuel metadata created."
+  ]
+}

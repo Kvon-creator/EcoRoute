@@ -1,0 +1,16 @@
+{
+  "source_url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/historical/n36w083/USGS_13_n36w083_20171114.tif",
+  "local_path": "data/USGS/raw/USGS_13_n36w083_20171114.tif",
+  "size_bytes": 482785065,
+  "source_md5": "f0700e93093cee1a4b1db033db0ca17d",
+  "sha256": "a49e1cedb295814005735786a1f1a766f5fc62863da0163a160311c7994e9680",
+  "source_etag": "\"fcaed1da6a01f631d1a9a9220983052d-93\"",
+  "source_last_modified": "Thu, 05 May 2022 17:13:59 GMT",
+  "verified_at_utc": "2026-10-23T15:54:50.484539+00:00",
+  "metadata_url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/historical/n36w083/USGS_13_n36w083_20171114.xml",
+  "metadata_path": "data/USGS/fairview_dem_metadata.xml",
+  "metadata_sha256": "3bf8473a670e434fc17ca93d1c195d2cbc48555c9f3a8ea35008ccbb94e0855e",
+  "elevation_unit": "meters",
+  "vertical_datum": "North American Vertical Datum of 1988",
+  "publication_date": "20171114"
+}

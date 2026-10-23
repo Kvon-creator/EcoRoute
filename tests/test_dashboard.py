@@ -104,6 +104,10 @@ def test_ui_renders_computed_routes_and_handles_unreachable_pair(prepared):
     assert app.metric[0].value == "0.3000 L"
     assert app.metric[1].value == "60.00%"
     assert app.dataframe[0].value["Distance (km)"].tolist() == [0.1, 0.16]
+    map_spec = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
+    assert map_spec["layers"][0]["widthUnits"] == "pixels"
+    assert map_spec["layers"][0]["widthMaxPixels"] == 5
+    assert map_spec["layers"][1]["radiusUnits"] == "pixels"
     app.selectbox(key="origin").select(2)
     app.selectbox(key="destination").select(1)
     app.button[0].click().run()
@@ -118,3 +122,34 @@ def test_ui_bad_checksum_shows_error(prepared):
     app = AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
     assert not app.exception
     assert any("checksum" in item.value for item in app.error)
+
+
+def test_gis_only_graph_renders_without_fabricating_fuel(prepared):
+    from src.dashboard import load_gis_preview
+    from src.road_network import add_edge_grades
+
+    graph, graph_path, metadata_path = prepared
+    nx.set_node_attributes(graph, {1: 600, 2: 605, 3: 610}, "elevation")
+    for _, _, attrs in graph.edges(data=True):
+        attrs.pop("fuel_liters")
+    add_edge_grades(graph)
+    ox.save_graphml(graph, graph_path)
+    metadata_path.unlink()
+    loaded, features = load_gis_preview(graph_path)
+    assert len(features["features"]) == 3
+    assert all("fuel_liters" not in attrs for _, _, attrs in loaded.edges(data=True))
+    app = AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    assert not app.exception
+    assert not app.error
+    assert app.metric[0].label == "Road nodes"
+    assert app.metric[0].value == "3"
+    assert app.metric[1].value == "3"
+    assert all("fuel" not in metric.label.lower() for metric in app.metric)
+    assert app.button[0].disabled
+    assert any("waiting for model predictions" in item.value for item in app.info)
+    map_spec = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
+    layer = map_spec["layers"][0]
+    assert layer["lineWidthUnits"] == "pixels"  # Never PyDeck's expression '@@=pixels'.
+    assert layer["lineWidthMaxPixels"] == 4
+    assert layer["filled"] is False
+    assert map_spec["initialViewState"] == {"latitude": 35.5305, "longitude": -82.4036, "zoom": 12}
