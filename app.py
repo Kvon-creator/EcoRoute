@@ -12,10 +12,11 @@ from src.dashboard import (
     comparison_rows, file_digest, load_prepared_graph, read_preview, route_paths,
 )
 from src.routing import compare_routes
+from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL
 
 
 ROOT = Path(__file__).resolve().parent
-GRAPH = ROOT / "data/processed/asheville.graphml"
+GRAPH = ROOT / DEFAULT_GRAPH_PATH
 METADATA = ROOT / "data/processed/fuel_metadata.json"
 VED = ROOT / "data/VED/extracted/VED_171101_week.csv"
 FLEET = ROOT / "data/NLR Delivery Truck Data/data_for_fleet_dna_delivery_trucks.csv"
@@ -90,7 +91,7 @@ def render_comparison(graph, metadata):
 
 def render_routes():
     if not GRAPH.is_file() or not METADATA.is_file():
-        st.info("Asheville comparison is waiting for a prepared road graph with fuel predictions.")
+        st.info("Fairview comparison is waiting for a prepared road graph with fuel predictions.")
         for path in (GRAPH, METADATA):
             st.write(f"{'Found' if path.is_file() else 'Missing'}: `{path.relative_to(ROOT).as_posix()}`")
         st.selectbox("Origin road node", [], disabled=True, placeholder="Road graph required")
@@ -120,7 +121,7 @@ def render_data():
             st.caption("Saved inspection of the first VED week, not all downloaded weeks. Missing fuel readings are not zero.")
         except (ValueError, TypeError, KeyError) as exc:
             st.warning(f"Saved VED inspection could not be read: {exc}")
-    st.warning("VED records come from Ann Arbor, Michigan. They are a training-data candidate, not Asheville measurements or predictions.")
+    st.warning("VED records come from Ann Arbor, Michigan. They are a training-data candidate, not Fairview measurements or predictions.")
     available = {label: path for label, path in (("VED first week", VED), ("Fleet DNA summaries", FLEET)) if path.is_file()}
     if available:
         selected = st.selectbox("Source dataset", list(available))
@@ -155,6 +156,7 @@ def render_data():
 
 st.set_page_config(page_title="EcoRoute", layout="wide")
 st.title("EcoRoute")
+st.caption(f"Study area: {STUDY_AREA_LABEL}")
 st.write("Compare shortest-distance and predicted lowest-fuel driving routes.")
 routes_tab, data_tab = st.tabs(["Route comparison", "Current data"])
 with routes_tab:

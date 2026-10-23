@@ -4,7 +4,27 @@ import pytest
 from src.road_network import (
     add_edge_grades,
     validate_graph,
+    download_fairview_graph,
 )
+
+
+def test_download_targets_azaleas_fairview_coordinates(monkeypatch):
+    import src.road_network as road_network
+
+    requests = []
+    graph = nx.MultiDiGraph()
+
+    def capture_query(center, **kwargs):
+        requests.append((center, kwargs))
+        return graph
+
+    monkeypatch.setattr(road_network.ox, "graph_from_point", capture_query)
+    assert download_fairview_graph() is graph
+    center, options = requests[0]
+    assert center == (35.5305, -82.4036)
+    assert options["dist"] == 5000
+    assert options["dist_type"] == "bbox"
+    assert options["network_type"] == "drive"
 
 
 def make_test_graph():

@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.dashboard import load_prepared_graph
 from src.evaluation import evaluate_pairs
+from src.study_area import DEFAULT_GRAPH_PATH
 
 
 def main() -> None:
@@ -20,7 +21,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         graph, metadata = load_prepared_graph(
-            ROOT / "data/processed/asheville.graphml",
+            ROOT / DEFAULT_GRAPH_PATH,
             ROOT / "data/processed/fuel_metadata.json",
         )
         ids = {str(node): node for node in graph.nodes}

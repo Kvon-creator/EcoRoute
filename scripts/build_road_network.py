@@ -1,13 +1,13 @@
 from src.road_network import (
     DEFAULT_DEM_PATH,
     DEFAULT_GRAPH_PATH,
-    build_asheville_graph,
+    build_fairview_graph,
 )
 
 
 def main():
-    #Build the Asheville road graph using the real USGS elevation raster.
-    graph = build_asheville_graph(
+    #Build the Fairview road graph using the real USGS elevation raster.
+    graph = build_fairview_graph(
         dem_path=DEFAULT_DEM_PATH,
         graph_path=DEFAULT_GRAPH_PATH,
     )

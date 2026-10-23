@@ -1,8 +1,8 @@
-# EcoRoute: three-person Asheville route comparison
+# EcoRoute: three-person Fairview route comparison
 
 ## Scope and current state
 
-Build a local Streamlit app comparing the shortest-distance driving route with the route having the lowest predicted fuel use, for the same origin and destination in a small Asheville study area. Use one fixed vehicle profile and one offline graph. Display both routes, distance in km, estimated fuel in liters, and the difference. Identical routes and zero savings are valid outcomes. Predictions are estimates, not measured savings.
+Build a local Streamlit app comparing the shortest-distance driving route with the route having the lowest predicted fuel use, for the same origin and destination in a small Fairview study area. Use one fixed vehicle profile and one offline graph. Display both routes, distance in km, estimated fuel in liters, and the difference. Identical routes and zero savings are valid outcomes. Predictions are estimates, not measured savings.
 
 Inspection baseline: Git commit `6db94b0cb8fed7d71283a7278e374648516374df`, cloned from https://github.com/Kvon-creator/EcoRoute on 2026-10-21. No local checkout was present in the chat workspace. This plan preserves all existing source code and tests. Proposed paths below are future work unless listed in the inventory.
 
@@ -33,10 +33,16 @@ Existing solver limitations, left unchanged: matrix dimensions, nonnegative fini
 
 ## Data decisions before implementation
 
-1. Azalea proposes a roughly 5 km by 5 km downtown Asheville area, with a small surrounding routing buffer. Commit the final bounding box, CRS, download date, OSM attribution, and 5-10 preset locations in a small metadata file. Restrict inputs to those presets initially. Preserve directed roads and parallel edges; this is a study-area comparison, not a claim about routes outside its boundary or full turn-restriction navigation.
+Study-area update: the user selected Fairview using Azalea's existing
+coordinates. GIS preparation, dashboard loading, and evaluation now share
+`src/study_area.py` and use `data/processed/fairview.graphml`. Original raw
+source folders retain their historical filenames. This rename does not create
+a graph, validate a raster, or generate fuel predictions.
+
+1. Use the existing center `(35.5305, -82.4036)` from Azalea for Fairview, NC. Keep the configured 5,000-meter OSMnx bounding-box distance (roughly 10 km across), not a formal municipal boundary. Commit the final bounding box, CRS, download date, OSM attribution, and 5-10 preset locations in a small metadata file. Restrict inputs to those presets initially. Preserve directed roads and parallel edges; this is a study-area comparison, not a claim about routes outside its boundary or full turn-restriction navigation.
 2. Download and save one OSMnx drive graph as GraphML. Check connectivity and select preset pairs with directed paths. Record missing speed limits and a consistent road-class speed-imputation rule. Estimated speed is not observed traffic speed.
-3. Resolve elevation coverage before adding grade. The `n36w082` tile name suggests a tile east of downtown Asheville (about longitude -82.55); inspect actual bounds and CRS after retrieval rather than assuming it covers the study area. A westward tile may be required. Check nodata, vertical units, and node coverage. Do not download every URL. Prefer a documented GIS export with node elevations if it avoids adding raster tooling to every teammate's environment.
-4. Bryce must obtain a documented segment-level fuel target and features available at inference time. The committed daily summaries cannot be joined directly to Asheville OSM edges and do not supply that target. Do not rename `fuel_id`, kinetic intensity, or energy-density statistics as liters consumed.
+3. Resolve elevation coverage before adding grade. The GIS code expects `USGS_13_n36w083_20171114.tif`, which is not currently downloaded. Inspect its actual bounds and CRS and verify coverage of the entire Fairview study area. The existing `n36w082` file is a different tile and only a Git LFS pointer. Check nodata, vertical units, and node coverage. Do not download every URL. Prefer a documented GIS export with node elevations if it avoids adding raster tooling to every teammate's environment.
+4. Bryce must obtain a documented segment-level fuel target and features available at inference time. The committed daily summaries cannot be joined directly to Fairview OSM edges and do not supply that target. Do not rename `fuel_id`, kinetic intensity, or energy-density statistics as liters consumed.
 5. If suitable measured labels cannot be obtained in the first milestone, use a documented fixed-vehicle fuel simulation to create labeled segments and train the model as a simulation surrogate. Label all results and evaluation as simulated. Agree this fallback meets course requirements before treating it as the project outcome. No measured real-world fuel-accuracy claim is justified. If neither path is acceptable, the fuel-prediction milestone is blocked; do not conceal it behind arbitrary weights.
 
 ## Simple architecture and shared contracts
@@ -51,7 +57,7 @@ Proposed files, not created by this change:
 | `src/gis.py` | Azalea: prepare/load GraphML, node elevations and directed edge features. Network downloads occur in preparation, not on every UI interaction. |
 | `src/ml.py` | Bryce: train a scikit-learn Pipeline and load/predict through Joblib. Use a simple baseline and one RandomForestRegressor; no model search service. |
 | `src/routing.py` | K'von: snap approved presets to nodes, calculate both paths with NetworkX, retain selected edge keys, and total route metrics. |
-| `data/processed/asheville.graphml` | Azalea's reproducible graph output; ignored generated file. |
+| `data/processed/fairview.graphml` | Azalea's reproducible graph output; ignored generated file. |
 | `data/processed/edge_features.csv` | Shared table keyed by `(u, v, key)`; ignored generated file. |
 | `models/fuel_model.joblib` | Bryce's complete fitted preprocessing/model Pipeline; ignored generated file. |
 | `models/model_metadata.json` | Commit feature order, units, target provenance, vehicle profile, training domain, metrics, seed, package versions and artifact hash. |
@@ -123,14 +129,14 @@ VS Code checkout. The existing solver remains unchanged.
 
 `app.py` now provides source-data review plus route-comparison controls. Actual
 CSV previews and saved inspection counts are available immediately. Missing
-Asheville artifacts disable routing rather than generating fake results.
+Fairview artifacts disable routing rather than generating fake results.
 `src/dashboard.py` supports prepared GraphML with precomputed fuel weights,
 checksum/provenance metadata, and exact selected-edge geometry. This avoids
 depending on an unfinished Joblib feature adapter. No live model inference,
 coordinate snapping, address lookup, or model training has been implemented.
 
 `src/evaluation.py` and `scripts/run_evaluation.py` prepare the 10-20-pair
-evaluation workflow and retain failures. No actual Asheville benchmark was run
+evaluation workflow and retain failures. No actual Fairview benchmark was run
 because the prepared graph, prediction metadata, and real node pairs are absent.
 See README.md for the implemented file contract and commands.
 

@@ -25,7 +25,7 @@ def prepared(tmp_path):
     graph.add_edge(3, 2, key=0, length=80, fuel_liters=0.1)
     folder = tmp_path / "data/processed"
     folder.mkdir(parents=True)
-    graph_path = folder / "asheville.graphml"
+    graph_path = folder / "fairview.graphml"
     ox.save_graphml(graph, graph_path)
     metadata = {"graph_sha256": file_digest(graph_path), "model_id": "TEST-FIXTURE",
                 "vehicle_profile": "TEST-ONLY", "fuel_unit": "liters",
@@ -90,6 +90,8 @@ def test_ui_missing_artifacts_disables_routes_without_fabricated_metrics(tmp_pat
     assert app.button[0].disabled
     assert len(app.metric) == 0
     assert any("waiting for a prepared road graph" in item.value for item in app.info)
+    assert any("Fairview" in item.value for item in app.info)
+    assert any("Study area: Fairview, NC" in item.value for item in app.caption)
 
 
 def test_ui_renders_computed_routes_and_handles_unreachable_pair(prepared):

@@ -61,7 +61,7 @@ do not discard or reinterpret them without evidence.
 
 ## Remaining work before training
 
-This is Ann Arbor personal-vehicle telemetry, not Asheville measurements or
+This is Ann Arbor personal-vehicle telemetry, not Fairview measurements or
 delivery-truck data. Bryce should join vehicle types, identify a usable fuel
 label subset, inspect timestamp intervals/gaps, and integrate valid rates over
 time to obtain liters. Split by vehicle/trip to avoid leakage. MAF-derived
@@ -70,9 +70,9 @@ labeling; they are not direct fuel measurements.
 
 The published columns do not include road grade. A hill-sensitive model needs
 additional defensible elevation/map matching or another compatible labeled
-source. OBD inputs such as RPM and MAF are unavailable from a static Asheville
+source. OBD inputs such as RPM and MAF are unavailable from a static Fairview
 road graph and should not become required inference inputs. Training outside
-Asheville does not establish local accuracy.
+Fairview does not establish local accuracy.
 
 No training, fuel predictions, road-network downloads, or elevation downloads
 were performed in this data-acquisition step.

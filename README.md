@@ -1,8 +1,8 @@
 # EcoRoute
 
-Point-to-point route comparison for a small Asheville study area is under
+Point-to-point route comparison for a small Fairview study area is under
 development. The existing `main.py` remains a separate synthetic fleet-solver
-demo. A Streamlit dashboard can review current source data. Asheville route
+demo. A Streamlit dashboard can review current source data. Fairview route
 predictions still require a prepared graph and compatible fuel costs.
 
 ## Setup and checks
@@ -46,7 +46,7 @@ Run only the independent routing tests with:
 ```
 
 The tests use artificial graphs and costs to verify routing behavior. They do
-not measure Asheville fuel savings. The dashboard can load a prepared GraphML
+not measure Fairview fuel savings. The dashboard can load a prepared GraphML
 file with precomputed costs; live model inference, feature adapters and coordinate
 snapping remain unimplemented. See `PROJECT_PLAN.md` for ownership and data gaps.
 
@@ -55,11 +55,26 @@ snapping remain unimplemented. See `PROJECT_PLAN.md` for ownership and data gaps
 The original University of Michigan VED telemetry archives and vehicle
 spreadsheets are now available locally under `data/VED/raw/`. One week has been
 extracted and inspected. Fuel labels are sparse in that sample; this is a
-training-data candidate, not a trained model or Asheville prediction output.
+training-data candidate, not a trained model or Fairview prediction output.
 See `data/VED/README.md` for provenance, verified downloads, inspection results,
 and reproduction commands.
 
 ## Dashboard
+
+The study area is Fairview, NC, centered on Azalea's coordinates
+`(35.5305, -82.4036)`. `src/study_area.py` shares the coordinates, graph path,
+and 5,000-meter bounding-box distance across GIS preparation and the app.
+The requested area is roughly 10 km across; it is not a municipal boundary.
+The default GIS build still requires the real
+`data/USGS/raw/USGS_13_n36w083_20171114.tif` raster and verified coverage.
+Run preparation from the repository root with:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.build_road_network
+```
+
+This downloads roads and builds the GIS graph; it does not predict fuel use.
+No old Asheville graph is automatically reused under the Fairview name.
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
@@ -73,7 +88,7 @@ trained and no dataset is downloaded during a UI rerun.
 Route comparison stays disabled until both of these locally prepared artifacts
 exist:
 
-- `data/processed/asheville.graphml`: directed OSMnx MultiDiGraph in EPSG:4326.
+- `data/processed/fairview.graphml`: directed OSMnx MultiDiGraph in EPSG:4326.
   Nodes need numeric longitude `x` and latitude `y`. Every edge needs positive
   `length` in meters and finite nonnegative `fuel_liters` predicted offline with
   one model and vehicle profile. Actual road geometry is used where provided;

@@ -7,29 +7,19 @@ import rasterio
 from pyproj import Transformer
 
 
-#Small Asheville study area used by the EcoRoute project.
-ASHEVILLE_CENTER = (35.5305, -82.4036)
+from src.study_area import FAIRVIEW_CENTER, DEFAULT_DISTANCE_METERS, DEFAULT_GRAPH_PATH
 
-#Keep the road network small enough for the project.
-DEFAULT_DISTANCE_METERS = 5000
-
-#Real USGS elevation raster for the Asheville area.
+#Real USGS elevation raster for the Fairview area.
 DEFAULT_DEM_PATH = Path(
     "data/USGS/raw/USGS_13_n36w083_20171114.tif"
 )
 
-#Prepared graph used later by the routing and ML components.
-DEFAULT_GRAPH_PATH = Path(
-    "data/processed/asheville.graphml"
-)
-
-
-def download_asheville_graph(
-    center=ASHEVILLE_CENTER,
+def download_fairview_graph(
+    center=FAIRVIEW_CENTER,
     distance_m=DEFAULT_DISTANCE_METERS,
 ):
     """
-    Download a drivable Asheville road network from OpenStreetMap.
+    Download a drivable Fairview road network from OpenStreetMap.
 
     Returns a directed NetworkX MultiDiGraph.
     """
@@ -38,6 +28,7 @@ def download_asheville_graph(
     graph = ox.graph_from_point(
         center,
         dist=distance_m,
+        dist_type="bbox",
         network_type="drive",
         simplify=True,
     )
@@ -265,7 +256,7 @@ def save_graph(
     graph_path=DEFAULT_GRAPH_PATH,
 ):
     """
-    Save the prepared Asheville graph as GraphML.
+    Save the prepared Fairview graph as GraphML.
     """
 
     graph_path = Path(graph_path)
@@ -289,7 +280,7 @@ def load_graph(
     graph_path=DEFAULT_GRAPH_PATH,
 ):
     """
-    Load a previously prepared Asheville GraphML file.
+    Load a previously prepared Fairview GraphML file.
     """
 
     graph_path = Path(graph_path)
@@ -304,7 +295,7 @@ def load_graph(
     )
 
 
-def build_asheville_graph(
+def build_fairview_graph(
     dem_path=DEFAULT_DEM_PATH,
     graph_path=DEFAULT_GRAPH_PATH,
     distance_m=DEFAULT_DISTANCE_METERS,
@@ -314,10 +305,10 @@ def build_asheville_graph(
     """
 
     print(
-        "Downloading Asheville road network..."
+        "Downloading Fairview road network..."
     )
 
-    graph = download_asheville_graph(
+    graph = download_fairview_graph(
         distance_m=distance_m
     )
 
@@ -352,7 +343,7 @@ def build_asheville_graph(
     )
 
     print(
-        "Saving prepared Asheville graph..."
+        "Saving prepared Fairview graph..."
     )
 
     output_path = save_graph(
@@ -361,7 +352,7 @@ def build_asheville_graph(
     )
 
     print(
-        f"Prepared Asheville graph saved to "
+        f"Prepared Fairview graph saved to "
         f"{output_path}"
     )
 

@@ -1,4 +1,4 @@
-"""Artificial graph weights verify algorithms, not Asheville fuel savings."""
+"""Artificial graph weights verify algorithms, not Fairview fuel savings."""
 
 from copy import deepcopy
 
