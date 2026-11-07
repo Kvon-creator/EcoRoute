@@ -1,0 +1,34 @@
+{
+  "model_id": "fairview-synthetic-van-hgb-v1",
+  "seed": 365,
+  "training_rows": 8000,
+  "heldout_rows": 2000,
+  "features": [
+    "speed_kph",
+    "grade"
+  ],
+  "sklearn_version": "1.9.1",
+  "numpy_version": "2.5.4",
+  "joblib_version": "1.6.0",
+  "source_gis_graph_sha256": "c49a11630a2ea3b27daa51357d460930c26fcd2318b236420189c676a4320b79",
+  "graph_sha256": "51b058b71c272857a105b69e3481559590ce77bf3b26bfed3eb03d1829ff226d",
+  "nodes": 779,
+  "edges": 1652,
+  "simulated_holdout_mae_liters_per_km": 0.0010513590165558415,
+  "simulated_holdout_rmse_liters_per_km": 0.0016583970172222577,
+  "mean_baseline_rmse_liters_per_km": 0.2961199855445189,
+  "graph_edge_mae_liters_per_km": 0.0012243441139917443,
+  "pair_selection": "20 seeded random distinct-node pairs, no filtering by outcome",
+  "route_pairs": 20,
+  "successful_pairs": 20,
+  "identical_routes": 18,
+  "mean_simulated_savings_percent": 1.4090268915159048,
+  "limitations": [
+    "Not calibrated or validated against measured fuel.",
+    "VED is not used for training or validation.",
+    "Steady speed; no acceleration, stops, congestion, fuel cutoff, or regeneration.",
+    "Endpoint grade is treated as constant per edge; steep-road speeds may be infeasible.",
+    "Held-out metrics measure agreement with the same synthetic generator only.",
+    "Route savings are internal simulated comparisons, not measured savings."
+  ]
+}

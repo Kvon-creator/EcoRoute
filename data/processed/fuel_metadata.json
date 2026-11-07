@@ -1,0 +1,52 @@
+{
+  "graph_sha256": "51b058b71c272857a105b69e3481559590ce77bf3b26bfed3eb03d1829ff226d",
+  "model_id": "fairview-synthetic-van-hgb-v1",
+  "vehicle_profile": "hypothetical-3000kg-gasoline-delivery-van-v1",
+  "fuel_unit": "liters",
+  "prediction_source": "simulation-trained",
+  "source_gis_graph_sha256": "c49a11630a2ea3b27daa51357d460930c26fcd2318b236420189c676a4320b79",
+  "model_sha256": "0715c7a4839cf18dc9b9427fe8be259746038240db4a067c8ee37fe459c39aff",
+  "model_path": "models/fairview-synthetic-van-hgb-v1.joblib",
+  "feature_names": [
+    "speed_kph",
+    "grade"
+  ],
+  "model_target": "liters_per_km",
+  "seed": 365,
+  "vehicle_parameters": {
+    "mass_kg": 3000.0,
+    "rolling_coefficient": 0.012,
+    "drag_area_m2": 1.1,
+    "air_density_kg_m3": 1.2,
+    "drivetrain_efficiency": 0.25,
+    "fuel_energy_j_per_liter": 34200000.0,
+    "idle_liters_per_hour": 0.9,
+    "gravity_m_s2": 9.80665
+  },
+  "assumed_speed_kph_by_road_class": {
+    "motorway": 80,
+    "motorway_link": 30,
+    "trunk": 70,
+    "trunk_link": 30,
+    "primary": 60,
+    "primary_link": 30,
+    "secondary": 50,
+    "secondary_link": 30,
+    "tertiary": 40,
+    "tertiary_link": 30,
+    "residential": 30,
+    "living_street": 15,
+    "service": 20,
+    "unclassified": 35
+  },
+  "unknown_road_speed_kph": 30,
+  "speed_source": "assumed-not-observed",
+  "limitations": [
+    "Not calibrated or validated against measured fuel.",
+    "VED is not used for training or validation.",
+    "Steady speed; no acceleration, stops, congestion, fuel cutoff, or regeneration.",
+    "Endpoint grade is treated as constant per edge; steep-road speeds may be infeasible.",
+    "Held-out metrics measure agreement with the same synthetic generator only.",
+    "Route savings are internal simulated comparisons, not measured savings."
+  ]
+}

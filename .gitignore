@@ -219,7 +219,7 @@ __marimo__/
 
 # Rebuildable GIS downloads, processed graphs, and trained models.
 /cache/
-/data/processed/
+/data/processed/*
 /models/*.joblib
 
 # VED source archives/spreadsheets and extracted telemetry are reproducible downloads.
@@ -232,3 +232,15 @@ __marimo__/
 #Large USGS elevation raster downloaded locally.
 data/USGS/raw/USGS_13_n36w083_20171114.tif
 /data/USGS/raw/USGS_13_n36w083_20171114.tif.part
+
+# Small simulated artifacts shipped for the runnable Fairview demo.
+!/data/processed/fairview.graphml
+!/data/processed/fairview_gis_only.graphml
+!/data/processed/fuel_metadata.json
+!/data/processed/simulated_edge_predictions.csv
+!/data/processed/simulation_holdout_predictions.csv
+!/data/processed/simulation_evaluation_pairs.csv
+!/data/processed/simulation_route_evaluation.csv
+!/data/processed/simulation_report.json
+!/data/processed/route_evaluation.csv
+!/models/fairview-synthetic-van-hgb-v1.joblib
