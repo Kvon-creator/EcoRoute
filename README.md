@@ -3,7 +3,33 @@
 Point-to-point route comparison for a small Fairview study area is under
 development. The existing `main.py` remains a separate synthetic fleet-solver
 demo. A Streamlit dashboard can review current source data. Fairview route
-predictions still require a prepared graph and compatible fuel costs.
+comparison now includes a prepared graph and explicitly simulated fuel costs.
+
+
+## Runnable simulation demo
+
+The checked-in Fairview graph has predicted `fuel_liters` for all 1,652 directed
+edges, with checksum-linked `data/processed/fuel_metadata.json`. The source is
+explicitly `simulation-trained`: a hypothetical 3,000 kg gasoline van, assumed
+road-class speeds, and a simplified steady-speed road-load calculation. VED
+is not used to train this model. These results do not establish measured fuel
+savings or real-world accuracy.
+
+After installing requirements, run the dashboard with:
+
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+See [SIMULATION.md](SIMULATION.md) for assumptions, model loading, reproduction,
+original GIS restoration, and limits. The exported Joblib estimator was built
+with scikit-learn 1.9.1, NumPy 2.5.4, and Joblib 1.6.0; the dashboard uses the
+prepared graph and does not need to deserialize that estimator.
+
+Executed evidence: 59 automated tests passed; all 20 seeded route comparisons
+succeeded (18 identical paths, two differing paths). Mean simulated savings
+across all 20 pairs were 1.4090%. Held-out synthetic RMSE was 0.001658 L/km,
+which measures agreement with the simulator, not measured vehicle performance.
 
 ## Setup and checks
 
@@ -67,8 +93,8 @@ and 5,000-meter bounding-box distance across GIS preparation and the app.
 The requested area is roughly 10 km across; it is not a municipal boundary.
 The Fairview GIS graph has been built locally: 779 nodes and 1,652 directed
 edges with real sampled elevations and signed grades. The saved graph reloads
-and all nodes are covered by the verified USGS raster. The graph currently has
-no predicted fuel costs. `data/GIS/fairview_build_report.json` records the
+and all nodes are covered by the verified USGS raster. The shared demo graph now has
+simulation-trained fuel costs; the GIS-only backup retains the original graph. `data/GIS/fairview_build_report.json` records the
 checks, source URLs, units, versions, and artifact hashes.
 
 To reproduce from the repository root:
@@ -81,7 +107,9 @@ To reproduce from the repository root:
 
 This downloads roads and builds the GIS graph; it does not predict fuel use.
 No old Asheville graph is automatically reused under the Fairview name.
-The 483 MB USGS raster and generated graph stay local and ignored by Git.
+The 483 MB USGS raster stays local and ignored by Git. The small prepared
+graph, GIS backup, simulation model, metadata, and prediction/evaluation CSVs
+are tracked so teammates can run the demo after cloning.
 The downloader checks the source MD5 and records SHA-256; USGS metadata in
 `data/USGS/fairview_dem_metadata.xml` confirms meters and NAVD88. Its publication
 date is 2017-11-14, so elevation is a historical surface rather than a current
