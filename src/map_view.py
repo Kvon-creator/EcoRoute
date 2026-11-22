@@ -49,11 +49,46 @@ def road_context_layers(graph, style='road', line_opacity=0.65):
     return [border,fill,labels]
 
 
-def route_deck(graph, comparison, origin, destination, style='road', line_opacity=0.65):
+def endpoint_layers(graph, origin=None, destination=None):
+    markers = [dict(position=[float(graph.nodes[n]['x']),float(graph.nodes[n]['y'])],
+                    route=label, text=text, color=color)
+               for n,label,text,color in ((origin,'A - Start','A',[22,130,60]),(destination,'B - Finish','B',[190,24,60])) if n is not None]
+    pins = pdk.Layer('ScatterplotLayer', markers, id='endpoints', get_position='position',
+                     get_fill_color='color', get_radius=12, radius_units=pdk.types.String('pixels'),
+                     stroked=True, get_line_color=[255,255,255], get_line_width=2,
+                     line_width_units=pdk.types.String('pixels'), pickable=True)
+    letters = pdk.Layer('TextLayer', markers, id='endpoint-letters', get_position='position', get_text='text',
+                        get_size=15, get_color=[255,255,255], get_text_anchor=pdk.types.String('middle'),
+                        get_alignment_baseline=pdk.types.String('center'), pickable=True)
+    return markers, pins, letters
+
+
+def fitted_view(coords):
+    xs, ys = [p[0] for p in coords], [p[1] for p in coords]
+    if max(xs)-min(xs) < 1e-9 and max(ys)-min(ys) < 1e-9:
+        return pdk.ViewState(longitude=xs[0],latitude=ys[0],zoom=15)
+    view = pdk.data_utils.compute_view(coords,view_proportion=1)
+    view.longitude, view.latitude = (min(xs)+max(xs))/2, (min(ys)+max(ys))/2
+    view.zoom = min(view.zoom,15)
+    return view
+
+
+def overview_deck(graph, origin=None, destination=None, style='road', line_opacity=0.65):
+    markers,pins,letters = endpoint_layers(graph,origin,destination)
+    coords = [[float(d['x']),float(d['y'])] for _,d in graph.nodes(data=True)]
+    layers = road_context_layers(graph,style,line_opacity)
+    if markers:
+        layers += [pins,letters]
+    return pdk.Deck(layers=layers,map_provider='carto',map_style=style,
+        initial_view_state=fitted_view(coords),tooltip={'text':'{route}'})
+
+
+def route_deck(graph, comparison, origin, destination, style='road', line_opacity=0.65, show_routes='both'):
     shortest, fuel = comparison.shortest, comparison.lowest_fuel
-    common = set(shortest.edges) & set(fuel.edges)
+    common = set(shortest.edges) & set(fuel.edges) if show_routes == 'both' else set()
     segments = []
-    for route, color, label in ((shortest, SHORTEST, 'Shortest route'), (fuel, FUEL, 'Lower-fuel route')):
+    selected = ((shortest,SHORTEST,'Shortest route'),) if show_routes == 'shortest' else ((fuel,FUEL,'Lower-fuel route'),) if show_routes == 'fuel' else ((shortest,SHORTEST,'Shortest route'),(fuel,FUEL,'Lower-fuel route'))
+    for route, color, label in selected:
         for edge, path in zip(route.edges, route_paths(graph, route)):
             if edge not in common:
                 segments.append(dict(path=path, color=color, route=label))
@@ -68,19 +103,9 @@ def route_deck(graph, comparison, origin, destination, style='road', line_opacit
     routes = pdk.Layer('PathLayer', segments, id='route-colors', get_path='path', opacity=line_opacity, get_color='color',
                        get_width=5, width_units=pdk.types.String('pixels'),
                        width_min_pixels=5, width_max_pixels=5, pickable=True)
-    markers = [dict(position=[float(graph.nodes[n]['x']),float(graph.nodes[n]['y'])],
-                    route=label, text=text, color=color)
-               for n,label,text,color in ((origin,'A - Start','A',[22,130,60]),(destination,'B - Finish','B',[190,24,60]))]
-    pins = pdk.Layer('ScatterplotLayer', markers, id='endpoints', get_position='position',
-                     get_fill_color='color', get_radius=12, radius_units=pdk.types.String('pixels'),
-                     stroked=True, get_line_color=[255,255,255], get_line_width=2,
-                     line_width_units=pdk.types.String('pixels'), pickable=True)
-    letters = pdk.Layer('TextLayer', markers, id='endpoint-letters', get_position='position', get_text='text',
-                        get_size=15, get_color=[255,255,255], get_text_anchor=pdk.types.String('middle'),
-                        get_alignment_baseline=pdk.types.String('center'), pickable=True)
-    coords = [point for segment in segments for point in segment['path']] + [m['position'] for m in markers]
-    view = pdk.data_utils.compute_view(coords, view_proportion=0.75)
-    view.zoom = min(view.zoom, 15)
+    markers,pins,letters = endpoint_layers(graph,origin,destination)
+    coords = [point for path in route_paths(graph,shortest)+route_paths(graph,fuel) for point in path] + [m['position'] for m in markers]
+    view = fitted_view(coords)
     road_border, road_fill, road_names = road_context_layers(graph, style, line_opacity)
     return pdk.Deck(layers=[road_border,road_fill,casing,routes,road_names,pins,letters], map_provider='carto',map_style=style,
                     initial_view_state=view, tooltip={'text':'{route}'})

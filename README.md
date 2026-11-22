@@ -65,6 +65,22 @@ The regular `python -m streamlit run app.py` command also opens the browser
 using `.streamlit/config.toml`. An explicit `--server.headless=true` flag
 overrides automatic opening. You can always open the URL above manually.
 
+## Using the comparison screen
+
+The screen starts with numbered address entry and a map of the saved study
+area. Confirm each address match to show its A/B road-connection marker.
+Road-name and coordinate inputs remain under **Other ways to choose locations**.
+Address lookup requires internet; travel between the address and its connected
+road point is excluded from route totals.
+
+After calculating, a plain-language sentence explains simulated fuel savings
+and extra distance. **Show routes** switches between both routes and either
+one alone. **Fit both routes** restores the complete trip view after panning.
+**Map appearance** contains the street/dark background and line-opacity controls.
+Road labels stay above the lines. The results display one clear simulation
+notice; model IDs, metadata, and calculation settings are under **Model and
+calculation details**. Detailed evaluation tables are also collapsible.
+
 ## Setup and checks
 
 Use Python 3.12. From the repository root in PowerShell:

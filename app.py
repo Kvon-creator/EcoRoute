@@ -1,5 +1,6 @@
 """EcoRoute dashboard: local data review and prepared-route comparison."""
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -13,7 +14,8 @@ from src.dashboard import (
 )
 from src.locations import location_labels, snap_coordinate
 from src.geocoding import search_address, normalize_address, AddressLookupError
-from src.map_view import route_deck, grade_color
+from src.map_view import route_deck, overview_deck, grade_color
+from src.ui_text import route_tradeoff
 from src.fuel_costs import directly_simulated_graph
 from src.routing import compare_routes
 from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL, FAIRVIEW_CENTER
@@ -101,119 +103,138 @@ def address_locations(graph):
             st.session_state["address_queries"] = (start,end)
         except AddressLookupError as exc:
             st.error(str(exc))
-            return None
+            return None, None
     matches = st.session_state.get("address_matches")
     if matches is None:
         st.info("Enter the starting and ending addresses, then choose Find addresses.")
-        return None
+        return None, None
     if not matches[0] or not matches[1]:
         missing = "starting" if not matches[0] else "ending"
         st.warning(f"No match for the {missing} address. Check the building number, street, city and ZIP code. Business names alone are not supported.")
-        return None
+        return None, None
     first, second = st.columns(2)
     a = first.selectbox("Confirm starting address", range(len(matches[0])), index=None,
                         format_func=lambda i: matches[0][i].label, key="address_origin")
     b = second.selectbox("Confirm ending address", range(len(matches[1])), index=None,
                          format_func=lambda i: matches[1][i].label, key="address_destination")
     st.caption("Address matches: U.S. Census Bureau, MAF/TIGER address ranges. Confirm both matches before calculating.")
-    if a is None or b is None:
-        return None
-    try:
-        start_match, end_match = matches[0][a], matches[1][b]
-        origin, gap1 = snap_coordinate(graph, start_match.latitude, start_match.longitude)
-        destination, gap2 = snap_coordinate(graph, end_match.latitude, end_match.longitude)
-    except ValueError as exc:
-        st.error(f"This address cannot connect to the saved Fairview network: {exc}")
-        return None
-    st.caption(f"A: {start_match.label} | B: {end_match.label}. Connected to saved road points {gap1:.0f} m and {gap2:.0f} m away. These connections are not included in the distance or fuel totals.")
+    origin = destination = None
+    for choice, candidates, label in ((a,matches[0],"Start"),(b,matches[1],"Finish")):
+        if choice is None:
+            continue
+        match = candidates[choice]
+        try:
+            node, gap = snap_coordinate(graph,match.latitude,match.longitude)
+            st.caption(f"{label}: {match.label}. Connected to a saved road point {gap:.0f} m away; that connection is excluded from totals.")
+            if label == "Start":
+                origin = node
+            else:
+                destination = node
+        except ValueError as exc:
+            st.error(f"This address cannot connect to the saved Fairview network: {exc}")
     return origin,destination
 
 
-def render_comparison(graph, metadata):
-    st.caption(
-        f"Saved ML model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | "
-        f"Source: {metadata['prediction_source']}. Costs were prepared offline."
-    )
-    if metadata["prediction_source"] == "simulation-trained":
-        st.warning("These predictions come from a simulation-trained model.")
+def choose_locations(graph):
     nodes = list(graph.nodes)
     labels = location_labels(graph)
-    mode = st.segmented_control("Choose locations using", ["Addresses", "Road names", "Coordinates"],
-                                default="Road names", key="location_mode") or "Road names"
+    origin = destination = None
+    with st.expander("Other ways to choose locations"):
+        mode = st.segmented_control("Choose locations using", ["Addresses", "Road names", "Coordinates"],
+                                    default="Addresses", key="location_mode") or "Addresses"
+        if mode == "Road names":
+            origin = st.selectbox("Starting road location", nodes, key="origin", format_func=labels.get)
+            destination = st.selectbox("Ending road location", nodes, index=min(1,len(nodes)-1), key="destination", format_func=labels.get)
+            st.caption("Type a road name to search. Coordinates distinguish points on the same road.")
+        elif mode == "Coordinates":
+            first, second = st.columns(2)
+            lat1 = first.number_input("Starting latitude", min_value=-90.0, max_value=90.0,
+                value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat")
+            lon1 = first.number_input("Starting longitude", min_value=-180.0, max_value=180.0,
+                value=float(graph.nodes[nodes[0]]["x"]), format="%.6f", key="start_lon")
+            lat2 = second.number_input("Ending latitude", min_value=-90.0, max_value=90.0,
+                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["y"]), format="%.6f", key="end_lat")
+            lon2 = second.number_input("Ending longitude", min_value=-180.0, max_value=180.0,
+                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["x"]), format="%.6f", key="end_lon")
+            st.caption("Connects to saved road points within 300 m. The connection distance is excluded from route totals.")
+            for label, lat, lon in (("Start",lat1,lon1),("Finish",lat2,lon2)):
+                try:
+                    node, gap = snap_coordinate(graph,lat,lon)
+                    st.caption(f"{label}: {labels[node]} ({gap:.0f} m from the entered point).")
+                    if label == "Start":
+                        origin = node
+                    else:
+                        destination = node
+                except ValueError as exc:
+                    st.error(str(exc))
     if mode == "Addresses":
-        locations = address_locations(graph)
-        if locations is None:
-            return
-        origin, destination = locations
-    elif mode == "Coordinates":
-        first, second = st.columns(2)
-        lat1 = first.number_input("Starting latitude", min_value=-90.0, max_value=90.0,
-                                  value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat")
-        lon1 = first.number_input("Starting longitude", min_value=-180.0, max_value=180.0,
-                                  value=float(graph.nodes[nodes[0]]["x"]), format="%.6f", key="start_lon")
-        lat2 = second.number_input("Ending latitude", min_value=-90.0, max_value=90.0,
-                                   value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["y"]), format="%.6f", key="end_lat")
-        lon2 = second.number_input("Ending longitude", min_value=-180.0, max_value=180.0,
-                                   value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["x"]), format="%.6f", key="end_lon")
-        st.caption("Coordinates connect to the nearest saved road point, within 300 m. Travel between your entered point and that road point is not included.")
-        try:
-            origin, gap1 = snap_coordinate(graph, lat1, lon1)
-            destination, gap2 = snap_coordinate(graph, lat2, lon2)
-        except ValueError as exc:
-            st.error(str(exc))
-            return
-        st.caption(f"Start: {labels[origin]} ({gap1:.0f} m away). End: {labels[destination]} ({gap2:.0f} m away).")
-    else:
-        origin = st.selectbox("Starting road location", nodes, key="origin", format_func=labels.get)
-        destination = st.selectbox("Ending road location", nodes, index=min(1, len(nodes)-1), key="destination", format_func=labels.get)
-        st.caption("Type a road name to search. Coordinates distinguish different points on the same road.")
+        origin, destination = address_locations(graph)
+    return origin, destination
+
+
+def render_comparison(graph, metadata):
+    origin, destination = choose_locations(graph)
     method = "Saved ML predictions"
-    if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _, _, d in graph.edges(data=True)):
-        method = st.segmented_control("Fuel calculation", ["Direct simulation", "Saved ML predictions"],
-                                      default="Direct simulation", key="fuel_method") or "Direct simulation"
-        st.caption("Direct simulation is recommended for this proof of concept: it avoids approximation errors and was faster in our CP3 comparison. Both options use assumed vehicle settings, not real fuel measurements.")
-        if method == "Direct simulation":
-            try:
-                graph = cached_direct_graph(str(GRAPH), str(METADATA), file_digest(GRAPH), file_digest(METADATA))
-            except (ValueError, TypeError, KeyError) as exc:
-                st.error(f"Direct simulation unavailable: {exc}")
-                return
-        st.caption(f"Displayed fuel estimates use: {method}.")
-    request_key = (origin, destination, method, metadata["graph_sha256"], metadata["model_id"])
-    if st.button("Calculate routes", type="primary"):
+    with st.expander("Model and calculation details"):
+        st.caption(f"Saved model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | Source: {metadata['prediction_source']}")
+        if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _,_,d in graph.edges(data=True)):
+            method = st.segmented_control("Fuel calculation", ["Direct simulation", "Saved ML predictions"],
+                default="Direct simulation", key="fuel_method") or "Direct simulation"
+            st.caption("Direct simulation avoids approximation error and was faster for this simple formula in the CP3 evaluation.")
+        st.json(metadata)
+    ready = origin is not None and destination is not None
+    request_key = (origin,destination,method,metadata["graph_sha256"],metadata["model_id"])
+    if st.button("Calculate routes", type="primary", disabled=not ready):
         st.session_state["route_request"] = request_key
-    if st.session_state.get("route_request") != request_key:
-        st.info("Select endpoints, then calculate to compare predicted route costs.")
-        return
-    try:
-        result = compare_routes(graph, origin, destination)
+    result = None
+    if ready and st.session_state.get("route_request") == request_key:
+        try:
+            routing_graph = graph
+            if method == "Direct simulation":
+                routing_graph = cached_direct_graph(str(GRAPH),str(METADATA),file_digest(GRAPH),file_digest(METADATA))
+            result = compare_routes(routing_graph,origin,destination)
+        except nx.NetworkXNoPath:
+            st.error("No driving route connects these nodes in this direction. Choose another pair.")
+        except (ValueError,TypeError,KeyError,nx.NodeNotFound) as exc:
+            st.error(f"Route comparison unavailable: {exc}")
+    if result is not None:
+        if metadata["prediction_source"] == "simulation-trained":
+            st.warning("Fuel estimates are simulated, not measured.")
+        st.write(route_tradeoff(result))
+        first, second = st.columns(2)
+        first.metric("Predicted fuel saved",f"{result.fuel_saved_liters:.4f} L")
+        second.metric("Predicted savings","N/A" if result.fuel_saved_percent is None else f"{result.fuel_saved_percent:.2f}%")
+    else:
+        st.caption("Choose your start and finish, then calculate. A marks the connected starting road point; B marks the finish.")
+    toolbar, fit = st.columns([3,1],vertical_alignment="bottom")
+    with toolbar:
+        visible = st.segmented_control("Show routes",["Both", "Shortest only", "Lower fuel only"],
+            default="Both",key="route_visibility",disabled=result is None) or "Both"
+    if fit.button("Fit both routes", disabled=result is None, key="fit_routes"):
+        st.session_state["map_fit_epoch"] = st.session_state.get("map_fit_epoch",0)+1
+    with st.expander("Map appearance"):
+        style = st.segmented_control("Map background",["Color streets","Dark contrast"],default="Color streets",key="map_background")
+        line_opacity = st.slider("Line opacity (%)",min_value=20,max_value=100,value=65,step=5,key="line_opacity",
+            help="Lower values make lines more transparent. Labels and endpoint markers stay fully visible.")
+    style_name = "dark" if style == "Dark contrast" else "road"
+    if result is None:
+        deck = overview_deck(graph,origin,destination,style=style_name,line_opacity=line_opacity/100)
+    else:
+        deck = route_deck(graph,result,origin,destination,style=style_name,line_opacity=line_opacity/100,
+                          show_routes={"Both":"both","Shortest only":"shortest","Lower fuel only":"fuel"}[visible])
+    scene = (request_key,result is not None,st.session_state.get("map_fit_epoch",0))
+    key = "route-map-"+hashlib.sha256(repr(scene).encode()).hexdigest()[:16]
+    st.pydeck_chart(deck,key=key,height=550,on_select="rerun",
+        alt="Fairview road map with A/B location markers and orange shortest, purple lower-fuel, or teal shared route sections")
+    if result is not None:
+        st.markdown(":orange-badge[Shortest route] :violet-badge[Lower-fuel route] :green-badge[Shared sections] **A** Start / **B** Finish")
+        st.caption("Teal means both routes use the same section. Selecting one route shows it in its own color.")
         rows = comparison_rows(result)
-    except nx.NetworkXNoPath:
-        st.error("No driving route connects these nodes in this direction. Choose another pair.")
-        return
-    except (ValueError, TypeError, nx.NodeNotFound) as exc:
-        st.error(f"Route comparison unavailable: {exc}")
-        return
-    st.markdown(":orange-badge[Shortest route] :violet-badge[Lower-fuel route] :green-badge[Shared sections]  **A** Start / **B** Finish")
-    st.caption("Orange follows the shortest route, purple the lower-fuel route, and teal marks sections used by both.")
-    style = st.segmented_control("Map background", ["Color streets", "Dark contrast"], default="Color streets", key="map_background")
-    line_opacity = st.slider("Line opacity (%)", min_value=20, max_value=100, value=65, step=5,
-                             key="line_opacity", help="Lower values make the lines more transparent. Road names and endpoint markers remain fully visible.")
-    st.pydeck_chart(route_deck(graph, result, origin, destination,
-                             style="dark" if style == "Dark contrast" else "road",
-                             line_opacity=line_opacity / 100),
-                    key="route-map-labels-v3", height=550,
-                    alt="Street map with orange shortest-route sections, purple lower-fuel sections, teal shared sections, and A/B endpoints")
-    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Saved roads have gray outlines and bold names. Map fits both routes; background tiles require internet. Markers show the connected road points, not building entrances.")
-    first, second = st.columns(2)
-    first.metric("Predicted fuel saved", f"{result.fuel_saved_liters:.4f} L")
-    second.metric("Predicted savings", "N/A" if result.fuel_saved_percent is None
-                  else f"{result.fuel_saved_percent:.2f}%")
-    st.dataframe(pd.DataFrame(rows), hide_index=True)
-    st.bar_chart(pd.DataFrame(rows), x="Route", y="Predicted fuel (L)")
-    if result.shortest.edges == result.lowest_fuel.edges:
-        st.info("Both objectives selected the same route. Zero predicted savings is a valid result.")
-    st.caption("Predicted savings use the same model for both routes. They are not measured fuel savings.")
+        st.dataframe(pd.DataFrame(rows),hide_index=True,alt="Distance and fuel comparison for the two routes")
+        with st.expander("Fuel comparison chart"):
+            st.bar_chart(pd.DataFrame(rows),x="Route",y="Predicted fuel (L)")
+    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Tiles require internet. Markers show connected road points, not verified building entrances.")
+
 
 
 def render_routes():
@@ -316,22 +337,24 @@ def render_evaluation():
         totals[1].metric("Direct routes different from shortest", str(nominal["successful"] - nominal["direct_matches_shortest"]))
         totals[2].metric("Average direct simulated savings", f"{nominal['mean_direct_savings_percent']:.2f}%")
         st.caption("These CP3 trip results use direct simulation to score every route, including those chosen by ML. They use a larger sample than Checkpoint 2.")
-        model_frame = pd.read_csv(folder / "model_comparison.csv")
-        model_frame["method"] = model_frame["method"].replace(methods)
-        model_frame = model_frame.rename(columns={"method": "Method", "rmse_liters_per_km": "Prediction error (RMSE, L/km)",
-            "mae_liters_per_km": "Average absolute error (L/km)", "median_prediction_ms_1652_edges": "Time for road estimates (ms)",
-            "validation_rmse_liters_per_km": "Model-selection error (L/km)", "selected_ml_on_validation": "Selected ML candidate"})
-        st.dataframe(model_frame, hide_index=True, alt="Alternative model accuracy and prediction time compared with direct simulation")
-        st.caption("Validation chooses the ML candidate. Separate test cases measure its error. Timings are machine-specific median warm batch times; no training or model-loading time included.")
-        routing_frame = pd.DataFrame([{"Method": methods.get(k,k), "Trips": v["pairs"],
-            "Matches direct route": v["learned_matches_direct"], "Average simulated savings (%)": v["mean_learned_savings_percent"],
-            "Average extra fuel vs direct (%)": v["mean_learned_regret_percent"], "Worse than shortest": v["learned_worse_than_shortest"]}
-            for k,v in summary["nominal_routes"].items()])
-        st.dataframe(routing_frame, hide_index=True, alt="Routing decisions scored by direct simulation for each model")
+        with st.expander("Detailed model and routing comparisons"):
+            model_frame = pd.read_csv(folder / "model_comparison.csv")
+            model_frame["method"] = model_frame["method"].replace(methods)
+            model_frame = model_frame.rename(columns={"method": "Method", "rmse_liters_per_km": "Prediction error (RMSE, L/km)",
+                "mae_liters_per_km": "Average absolute error (L/km)", "median_prediction_ms_1652_edges": "Time for road estimates (ms)",
+                "validation_rmse_liters_per_km": "Model-selection error (L/km)", "selected_ml_on_validation": "Selected ML candidate"})
+            st.dataframe(model_frame, hide_index=True, alt="Alternative model accuracy and prediction time compared with direct simulation")
+            st.caption("Validation chooses the ML candidate. Separate test cases measure its error. Timings are machine-specific median warm batch times; no training or model-loading time included.")
+            routing_frame = pd.DataFrame([{"Method": methods.get(k,k), "Trips": v["pairs"],
+                "Matches direct route": v["learned_matches_direct"], "Average simulated savings (%)": v["mean_learned_savings_percent"],
+                "Average extra fuel vs direct (%)": v["mean_learned_regret_percent"], "Worse than shortest": v["learned_worse_than_shortest"]}
+                for k,v in summary["nominal_routes"].items()])
+            st.dataframe(routing_frame, hide_index=True, alt="Routing decisions scored by direct simulation for each model")
         st.subheader("Changing assumptions")
         st.write("The direct calculation chooses new routes for each weight, speed, and efficiency setting. We also score the original saved ML routes under those new conditions; that model has not learned weight or efficiency changes.")
-        st.dataframe(pd.read_csv(folder / "sensitivity_summary.csv"), hide_index=True,
-                     alt="Sensitivity results for 27 weight, speed and efficiency combinations")
+        with st.expander("Detailed sensitivity results"):
+            st.dataframe(pd.read_csv(folder / "sensitivity_summary.csv"), hide_index=True,
+                         alt="Sensitivity results for 27 weight, speed and efficiency combinations")
         with st.expander("The two different Checkpoint 2 trips"):
             st.dataframe(pd.read_csv(folder / "cp2_different_route_profiles.csv"), hide_index=True,
                          alt="Distance, climb, slope and simulator fuel for the two original trips")

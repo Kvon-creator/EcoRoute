@@ -98,6 +98,7 @@ def test_ui_renders_computed_routes_and_handles_unreachable_pair(prepared):
     _, graph_path, _ = prepared
     root = graph_path.parents[2]
     app = AppTest.from_file(str(copy_app(root))).run(timeout=30)
+    app.segmented_control(key="location_mode").set_value("Road names").run()
     assert not app.exception
     app.button[0].click().run()
     assert not app.exception
@@ -181,6 +182,7 @@ def test_ui_direct_option_preserves_saved_ml_choice(prepared):
     metadata["graph_sha256"] = file_digest(graph_path)
     metadata_path.write_text(json.dumps(metadata))
     app = AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    app.segmented_control(key="location_mode").set_value("Road names").run()
     assert app.segmented_control(key="fuel_method").value == "Direct simulation"
     app.button[0].click().run()
     assert not app.exception and not app.error
