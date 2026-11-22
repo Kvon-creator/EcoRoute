@@ -197,11 +197,14 @@ def render_comparison(graph, metadata):
     st.markdown(":orange-badge[Shortest route] :violet-badge[Lower-fuel route] :green-badge[Shared sections]  **A** Start / **B** Finish")
     st.caption("Orange follows the shortest route, purple the lower-fuel route, and teal marks sections used by both.")
     style = st.segmented_control("Map background", ["Color streets", "Dark contrast"], default="Color streets", key="map_background")
+    line_opacity = st.slider("Line opacity (%)", min_value=20, max_value=100, value=65, step=5,
+                             key="line_opacity", help="Lower values make the lines more transparent. Road names and endpoint markers remain fully visible.")
     st.pydeck_chart(route_deck(graph, result, origin, destination,
-                             style="dark" if style == "Dark contrast" else "road"),
-                    key="route-map", height=550,
+                             style="dark" if style == "Dark contrast" else "road",
+                             line_opacity=line_opacity / 100),
+                    key="route-map-labels-v3", height=550,
                     alt="Street map with orange shortest-route sections, purple lower-fuel sections, teal shared sections, and A/B endpoints")
-    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Map fits both routes; tiles require internet. Markers show the connected road points, not building entrances.")
+    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Saved roads have gray outlines and bold names. Map fits both routes; background tiles require internet. Markers show the connected road points, not building entrances.")
     first, second = st.columns(2)
     first.metric("Predicted fuel saved", f"{result.fuel_saved_liters:.4f} L")
     second.metric("Predicted savings", "N/A" if result.fuel_saved_percent is None
