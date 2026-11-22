@@ -9,7 +9,7 @@ import pydeck as pdk
 import streamlit as st
 
 from src.dashboard import (
-    comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths,
+    comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths, load_evaluation_summary,
 )
 from src.locations import location_labels, snap_coordinate
 from src.fuel_costs import directly_simulated_graph
@@ -245,20 +245,37 @@ def render_evaluation():
         st.info("CP3 evaluation has not been generated in this checkout. Run python -m scripts.evaluate_cp3.")
         return
     try:
-        summary = json.loads(report.read_text(encoding="utf-8"))
-        if summary["graph_sha256"] != file_digest(GRAPH):
-            st.warning("These results describe a different graph version. Regenerate the evaluation.")
+        try:
+            summary = load_evaluation_summary(folder, GRAPH, METADATA)
+        except (OSError, ValueError, KeyError) as exc:
+            st.warning(f"Saved evaluation needs attention: {exc}")
             return
         st.subheader("What we tested")
         counts = summary["counts"]
         st.write(f"Checkpoint 2 used {counts['cp2_training_cases']:,} training cases, {counts['cp2_heldout_prediction_cases']:,} held-out prediction cases, and {counts['cp2_route_pairs']} route pairs. CP3 evaluates {counts['cp3_total_route_pairs']} route pairs in {counts['sensitivity_scenarios']} assumption combinations.")
         st.warning("All fuel results are simulated. Agreement with the simulator does not establish real vehicle accuracy.")
         st.write("All route choices are scored using the same direct calculation. Regret means extra simulated fuel above the route chosen directly by the simulator.")
+        methods = {"constant_mean": "One average estimate", "linear_log": "Simple linear model",
+                   "random_forest_log": "Random forest", "existing_hgb": "Saved ML model",
+                   "direct_simulator": "Direct simulation"}
+        nominal = summary["nominal_routes"]["existing_hgb"]
+        totals = st.columns(3)
+        totals[0].metric("Test trips", str(nominal["pairs"]))
+        totals[1].metric("Direct routes different from shortest", str(nominal["successful"] - nominal["direct_matches_shortest"]))
+        totals[2].metric("Average direct simulated savings", f"{nominal['mean_direct_savings_percent']:.2f}%")
+        st.caption("These CP3 trip results use direct simulation to score every route, including those chosen by ML. They use a larger sample than Checkpoint 2.")
         model_frame = pd.read_csv(folder / "model_comparison.csv")
+        model_frame["method"] = model_frame["method"].replace(methods)
+        model_frame = model_frame.rename(columns={"method": "Method", "rmse_liters_per_km": "Prediction error (RMSE, L/km)",
+            "mae_liters_per_km": "Average absolute error (L/km)", "median_prediction_ms_1652_edges": "Time for road estimates (ms)",
+            "validation_rmse_liters_per_km": "Model-selection error (L/km)", "selected_ml_on_validation": "Selected ML candidate"})
         st.dataframe(model_frame, hide_index=True, alt="Alternative model accuracy and prediction time compared with direct simulation")
         st.caption("Validation chooses the ML candidate. Separate test cases measure its error. Timings are machine-specific median warm batch times; no training or model-loading time included.")
-        st.dataframe(pd.DataFrame([dict(method=k, **v) for k,v in summary["nominal_routes"].items()]),
-                     hide_index=True, alt="Routing decisions scored by direct simulation for each model")
+        routing_frame = pd.DataFrame([{"Method": methods.get(k,k), "Trips": v["pairs"],
+            "Matches direct route": v["learned_matches_direct"], "Average simulated savings (%)": v["mean_learned_savings_percent"],
+            "Average extra fuel vs direct (%)": v["mean_learned_regret_percent"], "Worse than shortest": v["learned_worse_than_shortest"]}
+            for k,v in summary["nominal_routes"].items()])
+        st.dataframe(routing_frame, hide_index=True, alt="Routing decisions scored by direct simulation for each model")
         st.subheader("Changing assumptions")
         st.write("The direct calculation chooses new routes for each weight, speed, and efficiency setting. We also score the original saved ML routes under those new conditions; that model has not learned weight or efficiency changes.")
         st.dataframe(pd.read_csv(folder / "sensitivity_summary.csv"), hide_index=True,

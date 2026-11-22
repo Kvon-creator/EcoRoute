@@ -22,7 +22,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from scripts.simulate_fuel import PARAMETERS, SEED, simulated_rate, assumed_speed, digest, write_csv, write_json
+from src.simulation import PARAMETERS, simulated_rate, assumed_speed
+from scripts.simulate_fuel import SEED, digest, write_csv, write_json
 from src.dashboard import load_prepared_graph
 from src.cp3_evaluation import (routing_index, select_paths, decision_metrics,
                                route_cost, route_characteristics, summarize_decisions)
@@ -212,6 +213,7 @@ def main():
         model_comparison=model_rows,nominal_routes=nominal_summaries,
         cp2_original_routes=summarize_decisions(cp2_rows),gis=gis,
         graph_sha256=metadata['graph_sha256'],model_sha256=metadata['model_sha256'],
+        evidence_sha256={p.name:digest(p) for p in sorted(out.glob('*')) if p.is_file() and p.name!='summary.json'},
         pairs_sha256=digest(out/'evaluation_pairs.csv'),seed_new_pairs=20261122,
         python=platform.python_version(),sklearn=sklearn.__version__,numpy=np.__version__,
         protocol='All methods scored with the direct simulator. Pair set frozen independent of savings. Model selected by new validation RMSE; new test set not used for selection. Sensitivity reoptimizes direct routes and scores frozen nominal HGB deployment paths. No real-world validation.'))

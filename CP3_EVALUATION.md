@@ -218,7 +218,7 @@ that acceptance does not validate its physical assumptions.
 
 ## Verification of the implementation
 
-The full automated suite passed 70 tests, including new cases for simulator-based
+The full automated suite passed 76 tests, including new cases for simulator-based
 regret, exact parallel-edge selection, unreachable trips, negative/zero savings,
 coordinate rejection, and switching between saved ML and direct calculations.
 An additional smoke check runs the dashboard from a clean local copy containing
@@ -226,3 +226,13 @@ only source code, prepared graph/metadata, and CP3 evidence. It uses the existin
 Python environment; this is not a claim of testing a clean dependency install
 or an independent GitHub clone. No raw VED telemetry or USGS raster is needed
 to run the prepared demonstration.
+
+## Refinement after the initial CP3 implementation
+
+The app and both generation/evaluation commands now share `src/simulation.py`.
+The UI no longer imports a training command to calculate fuel. Evaluation
+evidence has checksums for its CSV/JSON files as well as graph/model identity;
+the app refuses to display stale or altered results. Evidence text files use
+LF line endings on every platform so cloning cannot invalidate their checksums.
+Evaluation tables now use clearer method names and show the key trip results
+above the detailed tables. See NEXT_STEPS.md for the remaining team tasks.

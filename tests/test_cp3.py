@@ -72,3 +72,41 @@ def test_direct_costs_do_not_mutate_saved_ml_graph_and_scale_by_length():
 def test_routing_cost_index_rejects_invalid_weights():
     with pytest.raises(ValueError):
         routing_index(toy(),{(1,2,0):float('nan')})
+
+
+def test_direct_simulation_accepts_zero_edge_same_location_graph():
+    g = nx.MultiDiGraph()
+    g.add_node(1)
+    assert directly_simulated_graph(g).number_of_edges() == 0
+
+
+@pytest.mark.parametrize("change", ["none", "graph", "model", "csv", "manifest"])
+def test_evaluation_detects_stale_or_modified_inputs(tmp_path, change):
+    import json
+    from src.dashboard import file_digest, load_evaluation_summary
+    folder = tmp_path / "evidence"
+    folder.mkdir()
+    graph = tmp_path / "graph.graphml"
+    graph.write_text("saved graph")
+    metadata = tmp_path / "metadata.json"
+    metadata.write_text(json.dumps({"model_sha256": "saved-model-hash"}))
+    names = ["model_comparison.csv", "sensitivity_summary.csv", "sensitivity_routes.csv",
+             "cp2_different_route_profiles.csv", "evaluation_pairs.csv"]
+    for name in names:
+        (folder / name).write_text("column\nvalue\n")
+    summary = {"graph_sha256": file_digest(graph), "model_sha256": "saved-model-hash",
+               "evidence_sha256": {name: file_digest(folder / name) for name in names}}
+    if change == "graph":
+        graph.write_text("different graph")
+    elif change == "model":
+        metadata.write_text(json.dumps({"model_sha256": "different-model-hash"}))
+    elif change == "csv":
+        (folder / names[0]).write_text("changed")
+    elif change == "manifest":
+        summary.pop("evidence_sha256")
+    (folder / "summary.json").write_text(json.dumps(summary))
+    if change == "none":
+        assert load_evaluation_summary(folder, graph, metadata) == summary
+    else:
+        with pytest.raises(ValueError):
+            load_evaluation_summary(folder, graph, metadata)

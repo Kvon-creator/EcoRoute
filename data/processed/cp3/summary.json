@@ -150,10 +150,24 @@
   },
   "graph_sha256": "51b058b71c272857a105b69e3481559590ce77bf3b26bfed3eb03d1829ff226d",
   "model_sha256": "0715c7a4839cf18dc9b9427fe8be259746038240db4a067c8ee37fe459c39aff",
-  "pairs_sha256": "834dc4f87b7d78f8f56b43db6fa5bd91a9f8d2a70dfaa2e97b28c938a932aae0",
+  "pairs_sha256": "d92439611630105872acea0f9b89fa6ff0dfbbd0a53d8f76c010fa665a3a4d03",
   "seed_new_pairs": 20261122,
   "python": "3.12.14",
   "sklearn": "1.9.1",
   "numpy": "2.5.4",
-  "protocol": "All methods scored with the direct simulator. Pair set frozen independent of savings. Model selected by new validation RMSE; new test set not used for selection. Sensitivity reoptimizes direct routes and scores frozen nominal HGB deployment paths. No real-world validation."
+  "protocol": "All methods scored with the direct simulator. Pair set frozen independent of savings. Model selected by new validation RMSE; new test set not used for selection. Sensitivity reoptimizes direct routes and scores frozen nominal HGB deployment paths. No real-world validation.",
+  "evidence_sha256": {
+    "cp2_different_route_details.json": "85873da8c377d9991d7ee7b2be7a2219c23f7ea2ad5fc784730c907a3874bef2",
+    "cp2_different_route_profiles.csv": "1b016588db580a1e495bd7179acd43098c3e6060d90af5c4d6ce2c12053d636b",
+    "evaluation_counts.json": "217630769dbc63af2e7fa890fefece5c7ae7aae91dded5bc1d85cf27d030ea23",
+    "evaluation_pairs.csv": "d92439611630105872acea0f9b89fa6ff0dfbbd0a53d8f76c010fa665a3a4d03",
+    "gis_review.json": "355a67c834db5a139fa36450af1a73d11a6380372719408e1f31e09fe8d85559",
+    "model_comparison.csv": "628da25c6b3fbe53dcade43e77de093aabb20893160d8013a70c71a36645435f",
+    "nominal_routes.csv": "0537183d15a2213992da7b3c05c24dc76941464baf3aa56f77651cc5451b4985",
+    "posted_speed_review.csv": "729d54377d32b04feaf133f01d88a51c312bd17b47975f815ccb9c387e251a42",
+    "route_cohorts.csv": "0de3027196c302ae74237789c0df145f30acc5f648411912f2fe0cf0de006cf0",
+    "sensitivity_routes.csv": "2305810c4b2530519fcbe559550165bc71ea5f3a0a3dd34577f7e0927ef06e0c",
+    "sensitivity_summary.csv": "474385f45bc71e1062a1fa0925d3795b498ecf50c3fde859421e044ac7d1bb90",
+    "steep_roads_review.csv": "6f00c64b2933a5ff997505cc884fab9e4b56754e235780330f9742eeac85ba89"
+  }
 }

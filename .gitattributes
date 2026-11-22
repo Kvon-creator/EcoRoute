@@ -1,3 +1,7 @@
 # Preserve exact artifact bytes for graph/model SHA-256 provenance.
 /data/processed/*.graphml -text
 /models/*.joblib -text
+
+# Preserve evidence bytes across platforms for the evaluation manifest.
+/data/processed/cp3/*.csv text eol=lf
+/data/processed/cp3/*.json text eol=lf
