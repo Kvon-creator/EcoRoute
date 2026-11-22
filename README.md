@@ -48,6 +48,39 @@ The Evaluation evidence tab shows saved comparisons. Direct simulation was
 faster and avoids ML approximation error for this simple formula; no measured
 fuel-accuracy claim is made. CP2 graph/model artifacts are preserved.
 
+## Open EcoRoute in your browser
+
+From this repository in PowerShell:
+
+```powershell
+.\run_app.ps1
+```
+
+This opens `http://127.0.0.1:8501` in your default browser if the local
+Streamlit server is already running. Otherwise it starts EcoRoute and opens
+the browser automatically. Keep the terminal open while a newly started
+server is running; press Ctrl+C there to stop it.
+
+The regular `python -m streamlit run app.py` command also opens the browser
+using `.streamlit/config.toml`. An explicit `--server.headless=true` flag
+overrides automatic opening. You can always open the URL above manually.
+
+## Using the comparison screen
+
+The screen starts with numbered address entry and a map of the saved study
+area. Confirm each address match to show its A/B road-connection marker.
+Road-name and coordinate inputs remain under **Other ways to choose locations**.
+Address lookup requires internet; travel between the address and its connected
+road point is excluded from route totals.
+
+After calculating, a plain-language sentence explains simulated fuel savings
+and extra distance. **Show routes** switches between both routes and either
+one alone. **Fit both routes** restores the complete trip view after panning.
+**Map appearance** contains the street/dark background and line-opacity controls.
+Road labels stay above the lines. The results display one clear simulation
+notice; model IDs, metadata, and calculation settings are under **Model and
+calculation details**. Detailed evaluation tables are also collapsible.
+
 ## Setup and checks
 
 Use Python 3.12. From the repository root in PowerShell:

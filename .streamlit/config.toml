@@ -1,0 +1,9 @@
+# Open the default browser when Streamlit starts from this project.
+[server]
+address = "127.0.0.1"
+port = 8501
+headless = false
+
+[browser]
+serverAddress = "127.0.0.1"
+gatherUsageStats = false
