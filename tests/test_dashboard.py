@@ -153,3 +153,37 @@ def test_gis_only_graph_renders_without_fabricating_fuel(prepared):
     assert layer["lineWidthMaxPixels"] == 4
     assert layer["filled"] is False
     assert map_spec["initialViewState"] == {"latitude": 35.5305, "longitude": -82.4036, "zoom": 12}
+
+
+def test_ui_coordinate_entry_and_outside_map_rejection(prepared):
+    _, graph_path, _ = prepared
+    app = AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    app.segmented_control(key="location_mode").set_value("Coordinates").run()
+    assert not app.exception
+    app.button[0].click().run()
+    assert not app.exception and not app.error
+    assert app.metric[0].value == "0.3000 L"
+    app.number_input(key="start_lat").set_value(0.0).run()
+    assert any("outside" in item.value for item in app.error)
+    assert not app.metric
+
+
+def test_ui_direct_option_preserves_saved_ml_choice(prepared):
+    graph, graph_path, metadata_path = prepared
+    for _, _, d in graph.edges(data=True):
+        d["grade"] = 0.0
+        d["highway"] = "residential"
+    ox.save_graphml(graph, graph_path)
+    metadata = json.loads(metadata_path.read_text())
+    metadata["graph_sha256"] = file_digest(graph_path)
+    metadata_path.write_text(json.dumps(metadata))
+    app = AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    assert app.segmented_control(key="fuel_method").value == "Direct simulation"
+    app.button[0].click().run()
+    assert not app.exception and not app.error
+    # All edges share a rate, so direct simulation chooses the shorter path.
+    assert app.metric[0].value == "0.0000 L"
+    app.segmented_control(key="fuel_method").set_value("Saved ML predictions")
+    app.button[0].click().run()
+    assert not app.exception and not app.error
+    assert app.metric[0].value == "0.3000 L"

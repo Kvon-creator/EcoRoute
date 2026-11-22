@@ -1,0 +1,159 @@
+{
+  "counts": {
+    "cp2_training_cases": 8000,
+    "cp2_heldout_prediction_cases": 2000,
+    "cp2_route_pairs": 20,
+    "cp3_validation_cases": 2000,
+    "cp3_new_test_cases": 2000,
+    "cp3_total_route_pairs": 200,
+    "cp3_new_route_pairs": 180,
+    "sensitivity_scenarios": 27,
+    "sensitivity_route_comparisons": 5400,
+    "clarification": "Different units: synthetic speed/grade examples are not route pairs. User confirmed video intended the same counts as script/report; exact video wording/timestamp not independently verified."
+  },
+  "selected_ml_on_validation": "random_forest_log",
+  "model_comparison": [
+    {
+      "method": "constant_mean",
+      "validation_rmse_liters_per_km": 0.2908208238774012,
+      "mae_liters_per_km": 0.2621361185148911,
+      "rmse_liters_per_km": 0.297267911902651,
+      "median_prediction_ms_1652_edges": 0.01059999999597494,
+      "selected_ml_on_validation": false
+    },
+    {
+      "method": "linear_log",
+      "validation_rmse_liters_per_km": 0.12171380685049275,
+      "mae_liters_per_km": 0.07800006485553285,
+      "rmse_liters_per_km": 0.12813159387792575,
+      "median_prediction_ms_1652_edges": 0.40709999984755996,
+      "selected_ml_on_validation": false
+    },
+    {
+      "method": "random_forest_log",
+      "validation_rmse_liters_per_km": 0.0016819240361170666,
+      "mae_liters_per_km": 0.0008642375469848997,
+      "rmse_liters_per_km": 0.0018638732518383746,
+      "median_prediction_ms_1652_edges": 29.225700000097277,
+      "selected_ml_on_validation": true
+    },
+    {
+      "method": "existing_hgb",
+      "validation_rmse_liters_per_km": 0.00169860981180129,
+      "mae_liters_per_km": 0.001059465213520599,
+      "rmse_liters_per_km": 0.0017167791691198955,
+      "median_prediction_ms_1652_edges": 9.554400000070018,
+      "selected_ml_on_validation": false
+    },
+    {
+      "method": "direct_simulator",
+      "validation_rmse_liters_per_km": 0.0,
+      "mae_liters_per_km": 0.0,
+      "rmse_liters_per_km": 0.0,
+      "median_prediction_ms_1652_edges": 0.07649999997738632,
+      "selected_ml_on_validation": false
+    }
+  ],
+  "nominal_routes": {
+    "constant_mean": {
+      "pairs": 200,
+      "successful": 200,
+      "failed": 0,
+      "mean_direct_savings_percent": 2.5655685509986386,
+      "max_direct_savings_percent": 40.98084513856319,
+      "mean_learned_savings_percent": 0.0,
+      "max_learned_savings_percent": 0.0,
+      "mean_learned_regret_percent": 3.08805814742127,
+      "max_learned_regret_percent": 69.43651638993585,
+      "learned_matches_direct": 141,
+      "direct_matches_shortest": 141,
+      "learned_matches_shortest": 200,
+      "learned_worse_than_shortest": 0,
+      "direct_savings_at_least_1_percent": 54
+    },
+    "linear_log": {
+      "pairs": 200,
+      "successful": 200,
+      "failed": 0,
+      "mean_direct_savings_percent": 2.5655685509986386,
+      "max_direct_savings_percent": 40.98084513856319,
+      "mean_learned_savings_percent": 0.8624901612751269,
+      "max_learned_savings_percent": 40.98084513856319,
+      "mean_learned_regret_percent": 1.947263163407042,
+      "max_learned_regret_percent": 44.985679058070644,
+      "learned_matches_direct": 138,
+      "direct_matches_shortest": 141,
+      "learned_matches_shortest": 171,
+      "learned_worse_than_shortest": 15,
+      "direct_savings_at_least_1_percent": 54
+    },
+    "random_forest_log": {
+      "pairs": 200,
+      "successful": 200,
+      "failed": 0,
+      "mean_direct_savings_percent": 2.5655685509986386,
+      "max_direct_savings_percent": 40.98084513856319,
+      "mean_learned_savings_percent": 2.5655685509986386,
+      "max_learned_savings_percent": 40.98084513856319,
+      "mean_learned_regret_percent": 0.0,
+      "max_learned_regret_percent": 0.0,
+      "learned_matches_direct": 200,
+      "direct_matches_shortest": 141,
+      "learned_matches_shortest": 141,
+      "learned_worse_than_shortest": 0,
+      "direct_savings_at_least_1_percent": 54
+    },
+    "existing_hgb": {
+      "pairs": 200,
+      "successful": 200,
+      "failed": 0,
+      "mean_direct_savings_percent": 2.5655685509986386,
+      "max_direct_savings_percent": 40.98084513856319,
+      "mean_learned_savings_percent": 2.5645928838171774,
+      "max_learned_savings_percent": 40.98084513856319,
+      "mean_learned_regret_percent": 0.0010248433007162413,
+      "max_learned_regret_percent": 0.10538146841058871,
+      "learned_matches_direct": 198,
+      "direct_matches_shortest": 141,
+      "learned_matches_shortest": 140,
+      "learned_worse_than_shortest": 1,
+      "direct_savings_at_least_1_percent": 54
+    }
+  },
+  "cp2_original_routes": {
+    "pairs": 20,
+    "successful": 20,
+    "failed": 0,
+    "mean_direct_savings_percent": 1.4308506111458388,
+    "max_direct_savings_percent": 14.662338366365654,
+    "mean_learned_savings_percent": 1.4308506111458388,
+    "max_learned_savings_percent": 14.662338366365654,
+    "mean_learned_regret_percent": 0.0,
+    "max_learned_regret_percent": 0.0,
+    "learned_matches_direct": 20,
+    "direct_matches_shortest": 18,
+    "learned_matches_shortest": 18,
+    "learned_worse_than_shortest": 0,
+    "direct_savings_at_least_1_percent": 2
+  },
+  "gis": {
+    "nodes": 779,
+    "directed_edges": 1652,
+    "strong_components": 1,
+    "edges_with_maxspeed_tags": 146,
+    "edges_with_assumed_speed": 1652,
+    "edges_at_least_15_percent_grade": 60,
+    "grades_match_endpoint_elevations": true,
+    "source_gis_graph_sha256": "c49a11630a2ea3b27daa51357d460930c26fcd2318b236420189c676a4320b79",
+    "scope": "Automated consistency review, not independent field validation. Posted-speed parsing, turn restrictions and steep-road plausibility still need manual review.",
+    "unparsed_posted_speed_tags": 0
+  },
+  "graph_sha256": "51b058b71c272857a105b69e3481559590ce77bf3b26bfed3eb03d1829ff226d",
+  "model_sha256": "0715c7a4839cf18dc9b9427fe8be259746038240db4a067c8ee37fe459c39aff",
+  "pairs_sha256": "834dc4f87b7d78f8f56b43db6fa5bd91a9f8d2a70dfaa2e97b28c938a932aae0",
+  "seed_new_pairs": 20261122,
+  "python": "3.12.14",
+  "sklearn": "1.9.1",
+  "numpy": "2.5.4",
+  "protocol": "All methods scored with the direct simulator. Pair set frozen independent of savings. Model selected by new validation RMSE; new test set not used for selection. Sensitivity reoptimizes direct routes and scores frozen nominal HGB deployment paths. No real-world validation."
+}

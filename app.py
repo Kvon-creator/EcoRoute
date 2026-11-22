@@ -11,6 +11,8 @@ import streamlit as st
 from src.dashboard import (
     comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths,
 )
+from src.locations import location_labels, snap_coordinate
+from src.fuel_costs import directly_simulated_graph
 from src.routing import compare_routes
 from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL, FAIRVIEW_CENTER
 from src.road_network import DEFAULT_DEM_PATH
@@ -65,17 +67,57 @@ def cached_preview(path: str, size: int, modified_ns: int):
     return read_preview(Path(path))
 
 
+
+@st.cache_resource(max_entries=4)
+def cached_direct_graph(path: str, metadata_path: str, graph_hash: str, metadata_hash: str):
+    graph, _ = load_prepared_graph(Path(path), Path(metadata_path))
+    return directly_simulated_graph(graph)
+
+
 def render_comparison(graph, metadata):
     st.caption(
-        f"Model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | "
+        f"Saved ML model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | "
         f"Source: {metadata['prediction_source']}. Costs were prepared offline."
     )
     if metadata["prediction_source"] == "simulation-trained":
         st.warning("These predictions come from a simulation-trained model.")
     nodes = list(graph.nodes)
-    origin = st.selectbox("Origin road node", nodes, key="origin")
-    destination = st.selectbox("Destination road node", nodes, index=min(1, len(nodes)-1), key="destination")
-    st.caption("Choose nodes from the prepared graph. Address search and coordinate snapping are pending.")
+    labels = location_labels(graph)
+    mode = st.segmented_control("Choose locations using", ["Road names", "Coordinates"],
+                                default="Road names", key="location_mode") or "Road names"
+    if mode == "Coordinates":
+        first, second = st.columns(2)
+        lat1 = first.number_input("Starting latitude", min_value=-90.0, max_value=90.0,
+                                  value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat")
+        lon1 = first.number_input("Starting longitude", min_value=-180.0, max_value=180.0,
+                                  value=float(graph.nodes[nodes[0]]["x"]), format="%.6f", key="start_lon")
+        lat2 = second.number_input("Ending latitude", min_value=-90.0, max_value=90.0,
+                                   value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["y"]), format="%.6f", key="end_lat")
+        lon2 = second.number_input("Ending longitude", min_value=-180.0, max_value=180.0,
+                                   value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["x"]), format="%.6f", key="end_lon")
+        st.caption("Coordinates connect to the nearest saved road point, within 300 m. Travel between your entered point and that road point is not included.")
+        try:
+            origin, gap1 = snap_coordinate(graph, lat1, lon1)
+            destination, gap2 = snap_coordinate(graph, lat2, lon2)
+        except ValueError as exc:
+            st.error(str(exc))
+            return
+        st.caption(f"Start: {labels[origin]} ({gap1:.0f} m away). End: {labels[destination]} ({gap2:.0f} m away).")
+    else:
+        origin = st.selectbox("Starting road location", nodes, key="origin", format_func=labels.get)
+        destination = st.selectbox("Ending road location", nodes, index=min(1, len(nodes)-1), key="destination", format_func=labels.get)
+        st.caption("Type a road name to search. Coordinates distinguish different points on the same road.")
+    if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _, _, d in graph.edges(data=True)):
+        method = st.segmented_control("Fuel calculation", ["Direct simulation", "Saved ML predictions"],
+                                      default="Direct simulation", key="fuel_method") or "Direct simulation"
+        st.caption("Direct simulation is recommended for this proof of concept: it avoids approximation errors and was faster in our CP3 comparison. Both options use assumed vehicle settings, not real fuel measurements.")
+        if method == "Direct simulation":
+            try:
+                graph = cached_direct_graph(str(GRAPH), str(METADATA), file_digest(GRAPH), file_digest(METADATA))
+            except (ValueError, TypeError, KeyError) as exc:
+                st.error(f"Direct simulation unavailable: {exc}")
+                return
+        st.caption(f"Displayed fuel estimates use: {method}.")
     if not st.button("Calculate routes", type="primary"):
         st.info("Select endpoints, then calculate to compare predicted route costs.")
         return
@@ -195,12 +237,50 @@ def render_data():
         st.caption("The saved OpenStreetMap reference is a download link, not a routable graph.")
 
 
+
+def render_evaluation():
+    folder = ROOT / "data/processed/cp3"
+    report = folder / "summary.json"
+    if not report.is_file():
+        st.info("CP3 evaluation has not been generated in this checkout. Run python -m scripts.evaluate_cp3.")
+        return
+    try:
+        summary = json.loads(report.read_text(encoding="utf-8"))
+        if summary["graph_sha256"] != file_digest(GRAPH):
+            st.warning("These results describe a different graph version. Regenerate the evaluation.")
+            return
+        st.subheader("What we tested")
+        counts = summary["counts"]
+        st.write(f"Checkpoint 2 used {counts['cp2_training_cases']:,} training cases, {counts['cp2_heldout_prediction_cases']:,} held-out prediction cases, and {counts['cp2_route_pairs']} route pairs. CP3 evaluates {counts['cp3_total_route_pairs']} route pairs in {counts['sensitivity_scenarios']} assumption combinations.")
+        st.warning("All fuel results are simulated. Agreement with the simulator does not establish real vehicle accuracy.")
+        st.write("All route choices are scored using the same direct calculation. Regret means extra simulated fuel above the route chosen directly by the simulator.")
+        model_frame = pd.read_csv(folder / "model_comparison.csv")
+        st.dataframe(model_frame, hide_index=True, alt="Alternative model accuracy and prediction time compared with direct simulation")
+        st.caption("Validation chooses the ML candidate. Separate test cases measure its error. Timings are machine-specific median warm batch times; no training or model-loading time included.")
+        st.dataframe(pd.DataFrame([dict(method=k, **v) for k,v in summary["nominal_routes"].items()]),
+                     hide_index=True, alt="Routing decisions scored by direct simulation for each model")
+        st.subheader("Changing assumptions")
+        st.write("The direct calculation chooses new routes for each weight, speed, and efficiency setting. We also score the original saved ML routes under those new conditions; that model has not learned weight or efficiency changes.")
+        st.dataframe(pd.read_csv(folder / "sensitivity_summary.csv"), hide_index=True,
+                     alt="Sensitivity results for 27 weight, speed and efficiency combinations")
+        with st.expander("The two different Checkpoint 2 trips"):
+            st.dataframe(pd.read_csv(folder / "cp2_different_route_profiles.csv"), hide_index=True,
+                         alt="Distance, climb, slope and simulator fuel for the two original trips")
+        st.download_button("Download all sensitivity route results", (folder / "sensitivity_routes.csv").read_bytes(),
+                           file_name="cp3_sensitivity_routes.csv", mime="text/csv")
+    except (OSError, ValueError, KeyError) as exc:
+        st.error(f"Could not read saved CP3 evaluation: {exc}")
+
+
 st.set_page_config(page_title="EcoRoute", layout="wide")
 st.title("EcoRoute")
 st.caption(f"Study area: {STUDY_AREA_LABEL}")
 st.write("Compare shortest-distance and predicted lowest-fuel driving routes.")
-routes_tab, data_tab = st.tabs(["Route comparison", "Current data"])
+routes_tab, data_tab, evaluation_tab = st.tabs(["Route comparison", "Current data", "Evaluation evidence"])
 with routes_tab:
     render_routes()
 with data_tab:
     render_data()
+
+with evaluation_tab:
+    render_evaluation()

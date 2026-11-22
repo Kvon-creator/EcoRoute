@@ -1,0 +1,3 @@
+cohort,pairs,shortest_distance_km,shortest_ascent_m,shortest_steep_distance_fraction,learned_savings_percent
+same_route,140,5.843516166685825,93.30558820452009,0.03827681909045058,0.0
+different_route,60,7.618494483623751,122.15768737792969,0.04135945161420609,8.548642946057258

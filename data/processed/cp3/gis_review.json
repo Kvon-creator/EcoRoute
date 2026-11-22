@@ -1,0 +1,12 @@
+{
+  "nodes": 779,
+  "directed_edges": 1652,
+  "strong_components": 1,
+  "edges_with_maxspeed_tags": 146,
+  "edges_with_assumed_speed": 1652,
+  "edges_at_least_15_percent_grade": 60,
+  "grades_match_endpoint_elevations": true,
+  "source_gis_graph_sha256": "c49a11630a2ea3b27daa51357d460930c26fcd2318b236420189c676a4320b79",
+  "scope": "Automated consistency review, not independent field validation. Posted-speed parsing, turn restrictions and steep-road plausibility still need manual review.",
+  "unparsed_posted_speed_tags": 0
+}
