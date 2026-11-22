@@ -1,0 +1,12 @@
+{
+  "cp2_training_cases": 8000,
+  "cp2_heldout_prediction_cases": 2000,
+  "cp2_route_pairs": 20,
+  "cp3_validation_cases": 2000,
+  "cp3_new_test_cases": 2000,
+  "cp3_total_route_pairs": 200,
+  "cp3_new_route_pairs": 180,
+  "sensitivity_scenarios": 27,
+  "sensitivity_route_comparisons": 5400,
+  "clarification": "Different units: synthetic speed/grade examples are not route pairs. User confirmed video intended the same counts as script/report; exact video wording/timestamp not independently verified."
+}

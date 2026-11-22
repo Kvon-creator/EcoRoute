@@ -58,3 +58,12 @@ Seed 365 generates 8,000 training and 2,000 separate held-out uniform speed/grad
 Executed results: held-out MAE 0.001051 L/km; RMSE 0.001658 L/km; constant-training-mean baseline RMSE 0.296120 L/km. Graph-edge agreement with the simulator: MAE 0.001224 L/km. Runtime versions: scikit-learn 1.9.1, NumPy 2.5.4, Joblib 1.6.0. Use compatible versions when loading the saved estimator; regenerate it when changing environments.
 
 Twenty distinct-endpoint node pairs are sampled independently of fuel outcome with seed 366. All 20 succeed; 18 select identical routes and two differ. Arithmetic mean predicted savings across all pairs is 1.4090%. These are internal simulated comparisons, not measured savings, evidence of local vehicle accuracy, or an achieved 5-15% real-world target. No positive-savings filtering is applied. The CSV retains every pair. The model and simulator share assumptions, so their agreement cannot validate those assumptions. Team review and any required instructor approval of the simulation scope remain separate from creating these artifacts.
+
+## CP3 follow-up
+
+The dashboard now defaults to direct calculation from this same simulation;
+the original saved ML predictions remain available. This avoids approximation
+error and was faster for the small graph. See [CP3_EVALUATION.md](CP3_EVALUATION.md)
+for the comparison with alternatives, 200 frozen route pairs, 27 sensitivity
+scenarios, revised location selection, and the distinction between CP2 and CP3
+counts and scoring methods. The generator and original artifacts are unchanged.

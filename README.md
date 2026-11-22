@@ -31,6 +31,23 @@ succeeded (18 identical paths, two differing paths). Mean simulated savings
 across all 20 pairs were 1.4090%. Held-out synthetic RMSE was 0.001658 L/km,
 which measures agreement with the simulator, not measured vehicle performance.
 
+## Checkpoint 3 evaluation and easier location selection
+
+See [CP3_EVALUATION.md](CP3_EVALUATION.md) for the response to checkpoint feedback,
+model justification, 200-pair comparisons, 27 sensitivity scenarios, original
+trip profiles, limitations, and the reconciled evaluation counts.
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.evaluate_cp3
+```
+
+The dashboard now supports searching road names and entering coordinates, with
+bounded connection to the nearest saved road point. Direct simulation is the
+recommended default; the original saved ML predictions remain selectable.
+The Evaluation evidence tab shows saved comparisons. Direct simulation was
+faster and avoids ML approximation error for this simple formula; no measured
+fuel-accuracy claim is made. CP2 graph/model artifacts are preserved.
+
 ## Setup and checks
 
 Use Python 3.12. From the repository root in PowerShell:
@@ -73,8 +90,8 @@ Run only the independent routing tests with:
 
 The tests use artificial graphs and costs to verify routing behavior. They do
 not measure Fairview fuel savings. The dashboard can load a prepared GraphML
-file with precomputed costs; live model inference, feature adapters and coordinate
-snapping remain unimplemented. See `PROJECT_PLAN.md` for ownership and data gaps.
+file with precomputed costs; live Joblib inference and generalized feature adapters remain unimplemented.
+Coordinate entry now connects to bounded nearest saved road nodes. See `PROJECT_PLAN.md` for ownership and data gaps.
 
 ## Downloaded fuel-data candidate
 
@@ -149,11 +166,10 @@ exist:
   validated accuracy. Do not create metadata to pass off test weights as a model.
 
 The app checks the checksum and caches loading by both artifact content hashes.
-Select existing road node IDs and calculate to see a blue shortest route, a
+Search road locations or enter coordinates and calculate to see a blue shortest route, a
 green lowest-predicted-fuel route, metrics, a table and a fuel comparison chart.
-Map tiles require internet; prepared routing computation is local. Loading a
-Joblib model and converting its predictions onto edges remains a later ML
-integration step. Nothing automatically trains or infers from VED files.
+Map tiles require internet; prepared routing computation is local. The dashboard consumes precomputed ML edge costs, or calculates the same
+simplified simulation directly. It does not load a live Joblib estimator. Nothing automatically trains or infers from VED files.
 
 ## Evaluation preparation
 

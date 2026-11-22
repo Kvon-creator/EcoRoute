@@ -244,3 +244,10 @@ data/USGS/raw/USGS_13_n36w083_20171114.tif
 !/data/processed/simulation_report.json
 !/data/processed/route_evaluation.csv
 !/models/fairview-synthetic-van-hgb-v1.joblib
+
+# Small CP3 evidence files, with large source downloads still excluded.
+!/data/processed/cp3/
+/data/processed/cp3/*
+!/data/processed/cp3/*.csv
+!/data/processed/cp3/*.json
+!/data/processed/cp3/*.png

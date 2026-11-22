@@ -111,3 +111,24 @@ def read_preview(path: Path, limit: int = 1000) -> pd.DataFrame:
     if not 1 <= limit <= 10000:
         raise ValueError("CSV preview limit must be between 1 and 10,000 rows.")
     return pd.read_csv(path, nrows=limit)
+
+
+def load_evaluation_summary(folder: Path, graph_path: Path, metadata_path: Path):
+    """Verify evidence identity and contents before presenting old results."""
+    summary = json.loads((folder / "summary.json").read_text(encoding="utf-8"))
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if summary.get("graph_sha256") != file_digest(graph_path):
+        raise ValueError("Evaluation describes a different graph version. Regenerate the evaluation.")
+    if not summary.get("model_sha256") or summary["model_sha256"] != metadata.get("model_sha256"):
+        raise ValueError("Evaluation describes a different model version. Regenerate the evaluation.")
+    hashes = summary.get("evidence_sha256")
+    if not isinstance(hashes, dict) or not hashes:
+        raise ValueError("Evaluation has no evidence checksums. Regenerate the evaluation.")
+    required = {"model_comparison.csv", "sensitivity_summary.csv", "sensitivity_routes.csv",
+                "cp2_different_route_profiles.csv", "evaluation_pairs.csv"}
+    if not required.issubset(hashes):
+        raise ValueError("Evaluation is missing required evidence checksums.")
+    for name, expected in hashes.items():
+        if Path(name).name != name or file_digest(folder / name) != expected:
+            raise ValueError("Evaluation evidence changed or is incomplete. Regenerate the evaluation.")
+    return summary
