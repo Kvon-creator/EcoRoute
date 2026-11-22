@@ -7,7 +7,7 @@ numpy>=1.24.0
 # Planned Fairview route comparison (use Python 3.12).
 osmnx>=2.0,<3
 scikit-learn>=1.5,<2
-streamlit>=1.57,<2
+streamlit>=1.66.1,<2
 joblib>=1.4,<2
 
 #GIS dependencies for USGS elevation sampling and coordinate conversion.

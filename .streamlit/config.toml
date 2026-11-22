@@ -7,3 +7,31 @@ headless = false
 [browser]
 serverAddress = "127.0.0.1"
 gatherUsageStats = false
+
+
+# EcoRoute visual theme: quiet background, teal actions, orange/purple route accents.
+[theme]
+baseRadius = "12px"
+buttonRadius = "10px"
+showWidgetBorder = true
+font = "sans serif"
+baseFontSize = 14
+headingFontSizes = ["30px", "24px", "20px", "17px", "15px", "14px"]
+chartCategoricalColors = ["#ea580c", "#6d28d9", "#0d9488"]
+paddingTop = "0.5rem"
+paddingBottom = "2rem"
+
+[theme.light]
+primaryColor = "#0f766e"
+backgroundColor = "#f5f8f6"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#19392f"
+borderColor = "#d6e4dc"
+
+[theme.dark]
+primaryColor = "#2dd4bf"
+backgroundColor = "#101b1a"
+secondaryBackgroundColor = "#192a27"
+textColor = "#edf7f3"
+borderColor = "#38524a"
+chartCategoricalColors = ["#fb923c", "#c4b5fd", "#2dd4bf"]
