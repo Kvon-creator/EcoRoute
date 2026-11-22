@@ -220,3 +220,15 @@ distances, predicted fuel, predicted savings, errors, and artifact provenance.
 Missing graph/metadata stops the command without generating benchmark results.
 Optimizing and evaluating with the same model does not establish measured
 real-world savings.
+
+## Visual planner
+
+The planner uses a compact trip panel beside a large map, with colored route
+cards and an endpoint-elevation chart after calculation. Use **Try a Fairview
+demo** to see a prepared trip without an address lookup. The **Workspace**
+control opens planning, evaluation, or source-data views. Trip selections remain
+available when returning to the planner. See [UI_DESIGN_NOTES.md](UI_DESIGN_NOTES.md)
+for the Google Maps, MapQuest, and Komoot research behind these design choices.
+
+The redesigned planner uses Streamlit 1.66.1 or later for persistent widget
+state between workspaces. Install the updated requirements before running it.

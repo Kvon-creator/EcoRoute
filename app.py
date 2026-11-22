@@ -1,14 +1,12 @@
 """EcoRoute dashboard: local data review and prepared-route comparison."""
-
 import hashlib
 import json
 from pathlib import Path
-
 import networkx as nx
+import altair as alt
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
-
 from src.dashboard import (
     comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths, load_evaluation_summary,
 )
@@ -16,12 +14,12 @@ from src.locations import location_labels, snap_coordinate
 from src.geocoding import search_address, normalize_address, AddressLookupError
 from src.map_view import route_deck, overview_deck, grade_color
 from src.ui_text import route_tradeoff
+from src.planner_presentation import elevation_profile
+from src.branding import logo_markup
 from src.fuel_costs import directly_simulated_graph
 from src.routing import compare_routes
 from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL, FAIRVIEW_CENTER
 from src.road_network import DEFAULT_DEM_PATH
-
-
 ROOT = Path(__file__).resolve().parent
 GRAPH = ROOT / DEFAULT_GRAPH_PATH
 METADATA = ROOT / "data/processed/fuel_metadata.json"
@@ -74,21 +72,18 @@ def cached_preview(path: str, size: int, modified_ns: int):
     return read_preview(Path(path))
 
 
-
 @st.cache_resource(max_entries=4)
 def cached_direct_graph(path: str, metadata_path: str, graph_hash: str, metadata_hash: str):
     graph, _ = load_prepared_graph(Path(path), Path(metadata_path))
     return directly_simulated_graph(graph)
 
 
-
 def address_locations(graph):
-    st.caption("Enter numbered street addresses. Search sends them to the U.S. Census geocoder; internet is required. Locations are approximate, not verified building entrances.")
+    st.caption("Numbered street addresses in the Fairview study area.")
     with st.form("address_search"):
-        first, second = st.columns(2)
-        start = first.text_input("Starting address", placeholder="1 Taylor Road, Fairview, NC 28730", key="address_start")
-        end = second.text_input("Ending address", placeholder="Number, street, city, state or ZIP", key="address_end")
-        submitted = st.form_submit_button("Find addresses", icon=":material/search:")
+        start = st.text_input("Starting address", placeholder="1 Taylor Road, Fairview, NC 28730", key="address_start", persist_state="session")
+        end = st.text_input("Ending address", placeholder="Number, street, city, state or ZIP", key="address_end", persist_state="session")
+        submitted = st.form_submit_button("Find addresses", icon=":material/search:",width="stretch")
     if submitted:
         st.session_state.pop("address_matches", None)
         st.session_state.pop("address_origin", None)
@@ -106,18 +101,17 @@ def address_locations(graph):
             return None, None
     matches = st.session_state.get("address_matches")
     if matches is None:
-        st.info("Enter the starting and ending addresses, then choose Find addresses.")
+        st.info("Find both addresses, then confirm the matches.")
         return None, None
     if not matches[0] or not matches[1]:
         missing = "starting" if not matches[0] else "ending"
         st.warning(f"No match for the {missing} address. Check the building number, street, city and ZIP code. Business names alone are not supported.")
         return None, None
-    first, second = st.columns(2)
-    a = first.selectbox("Confirm starting address", range(len(matches[0])), index=None,
-                        format_func=lambda i: matches[0][i].label, key="address_origin")
-    b = second.selectbox("Confirm ending address", range(len(matches[1])), index=None,
-                         format_func=lambda i: matches[1][i].label, key="address_destination")
-    st.caption("Address matches: U.S. Census Bureau, MAF/TIGER address ranges. Confirm both matches before calculating.")
+    a = st.selectbox("Confirm starting address", range(len(matches[0])), index=None,
+                        format_func=lambda i: matches[0][i].label, key="address_origin", persist_state="session")
+    b = st.selectbox("Confirm ending address", range(len(matches[1])), index=None,
+                         format_func=lambda i: matches[1][i].label, key="address_destination", persist_state="session")
+    st.caption("Confirm both matches. Lookup: U.S. Census Bureau; approximate locations. Addresses are sent only when you search.")
     origin = destination = None
     for choice, candidates, label in ((a,matches[0],"Start"),(b,matches[1],"Finish")):
         if choice is None:
@@ -138,24 +132,30 @@ def address_locations(graph):
 def choose_locations(graph):
     nodes = list(graph.nodes)
     labels = location_labels(graph)
+    if "location_mode" not in st.session_state:
+        st.session_state["location_mode"] = "Addresses"
+    if "origin" not in st.session_state:
+        st.session_state["origin"] = nodes[0]
+    if "destination" not in st.session_state:
+        st.session_state["destination"] = nodes[min(1,len(nodes)-1)]
     origin = destination = None
     with st.expander("Other ways to choose locations"):
         mode = st.segmented_control("Choose locations using", ["Addresses", "Road names", "Coordinates"],
-                                    default="Addresses", key="location_mode") or "Addresses"
+                                    key="location_mode", persist_state="session") or "Addresses"
         if mode == "Road names":
-            origin = st.selectbox("Starting road location", nodes, key="origin", format_func=labels.get)
-            destination = st.selectbox("Ending road location", nodes, index=min(1,len(nodes)-1), key="destination", format_func=labels.get)
+            origin = st.selectbox("Starting road location", nodes, index=None, key="origin", format_func=labels.get, persist_state="session")
+            destination = st.selectbox("Ending road location", nodes, index=None, key="destination", format_func=labels.get, persist_state="session")
             st.caption("Type a road name to search. Coordinates distinguish points on the same road.")
         elif mode == "Coordinates":
             first, second = st.columns(2)
             lat1 = first.number_input("Starting latitude", min_value=-90.0, max_value=90.0,
-                value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat")
+                value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat", persist_state="session")
             lon1 = first.number_input("Starting longitude", min_value=-180.0, max_value=180.0,
-                value=float(graph.nodes[nodes[0]]["x"]), format="%.6f", key="start_lon")
+                value=float(graph.nodes[nodes[0]]["x"]), format="%.6f", key="start_lon", persist_state="session")
             lat2 = second.number_input("Ending latitude", min_value=-90.0, max_value=90.0,
-                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["y"]), format="%.6f", key="end_lat")
+                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["y"]), format="%.6f", key="end_lat", persist_state="session")
             lon2 = second.number_input("Ending longitude", min_value=-180.0, max_value=180.0,
-                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["x"]), format="%.6f", key="end_lon")
+                value=float(graph.nodes[nodes[min(1,len(nodes)-1)]]["x"]), format="%.6f", key="end_lon", persist_state="session")
             st.caption("Connects to saved road points within 300 m. The connection distance is excluded from route totals.")
             for label, lat, lon in (("Start",lat1,lon1),("Finish",lat2,lon2)):
                 try:
@@ -172,69 +172,101 @@ def choose_locations(graph):
     return origin, destination
 
 
+def demo_trip():
+    st.session_state["location_mode"] = "Road names"
+    st.session_state["origin"] = 6596571591
+    st.session_state["destination"] = 4067941648
+    st.session_state["demo_requested"] = True
+
+
 def render_comparison(graph, metadata):
-    origin, destination = choose_locations(graph)
-    method = "Saved ML predictions"
-    with st.expander("Model and calculation details"):
-        st.caption(f"Saved model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | Source: {metadata['prediction_source']}")
-        if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _,_,d in graph.edges(data=True)):
-            method = st.segmented_control("Fuel calculation", ["Direct simulation", "Saved ML predictions"],
-                default="Direct simulation", key="fuel_method") or "Direct simulation"
-            st.caption("Direct simulation avoids approximation error and was faster for this simple formula in the CP3 evaluation.")
-        st.json(metadata)
-    ready = origin is not None and destination is not None
-    request_key = (origin,destination,method,metadata["graph_sha256"],metadata["model_id"])
-    if st.button("Calculate routes", type="primary", disabled=not ready):
-        st.session_state["route_request"] = request_key
+    planner, map_area = st.columns([1,2.25],gap="large",vertical_alignment="top")
+    with planner:
+        with st.container(border=True):
+            st.subheader("Your trip",icon=":material/directions:")
+            if {6596571591,4067941648}.issubset(graph.nodes):
+                st.button("Try a Fairview demo",on_click=demo_trip,icon=":material/play_arrow:",width="stretch")
+            origin, destination = choose_locations(graph)
+            method = "Saved ML predictions"
+            with st.expander("Model and calculation details"):
+                st.caption(f"Saved model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | Source: {metadata['prediction_source']}")
+                if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _,_,d in graph.edges(data=True)):
+                    method = st.segmented_control("Fuel calculation",["Direct simulation","Saved ML predictions"],
+                        default="Direct simulation",key="fuel_method", persist_state="session") or "Direct simulation"
+                    st.caption("Direct simulation avoids approximation error and was faster for this formula in CP3.")
+                st.json(metadata)
+            ready = origin is not None and destination is not None
+            request_key = (origin,destination,method,metadata["graph_sha256"],metadata["model_id"])
+            if st.button("Calculate routes",type="primary",disabled=not ready,width="stretch",icon=":material/route:"):
+                st.session_state["route_request"] = request_key
+            if st.session_state.pop("demo_requested",False) and ready:
+                st.session_state["route_request"] = request_key
     result = None
     if ready and st.session_state.get("route_request") == request_key:
         try:
-            routing_graph = graph
-            if method == "Direct simulation":
-                routing_graph = cached_direct_graph(str(GRAPH),str(METADATA),file_digest(GRAPH),file_digest(METADATA))
+            routing_graph = graph if method != "Direct simulation" else cached_direct_graph(str(GRAPH),str(METADATA),file_digest(GRAPH),file_digest(METADATA))
             result = compare_routes(routing_graph,origin,destination)
         except nx.NetworkXNoPath:
-            st.error("No driving route connects these nodes in this direction. Choose another pair.")
+            planner.error("No driving route connects these points in this direction. Choose another pair.")
         except (ValueError,TypeError,KeyError,nx.NodeNotFound) as exc:
-            st.error(f"Route comparison unavailable: {exc}")
-    if result is not None:
-        if metadata["prediction_source"] == "simulation-trained":
-            st.warning("Fuel estimates are simulated, not measured.")
-        st.write(route_tradeoff(result))
-        first, second = st.columns(2)
-        first.metric("Predicted fuel saved",f"{result.fuel_saved_liters:.4f} L")
-        second.metric("Predicted savings","N/A" if result.fuel_saved_percent is None else f"{result.fuel_saved_percent:.2f}%")
-    else:
-        st.caption("Choose your start and finish, then calculate. A marks the connected starting road point; B marks the finish.")
-    toolbar, fit = st.columns([3,1],vertical_alignment="bottom")
-    with toolbar:
-        visible = st.segmented_control("Show routes",["Both", "Shortest only", "Lower fuel only"],
-            default="Both",key="route_visibility",disabled=result is None) or "Both"
-    if fit.button("Fit both routes", disabled=result is None, key="fit_routes"):
-        st.session_state["map_fit_epoch"] = st.session_state.get("map_fit_epoch",0)+1
-    with st.expander("Map appearance"):
-        style = st.segmented_control("Map background",["Color streets","Dark contrast"],default="Color streets",key="map_background")
-        line_opacity = st.slider("Line opacity (%)",min_value=20,max_value=100,value=65,step=5,key="line_opacity",
-            help="Lower values make lines more transparent. Labels and endpoint markers stay fully visible.")
-    style_name = "dark" if style == "Dark contrast" else "road"
-    if result is None:
-        deck = overview_deck(graph,origin,destination,style=style_name,line_opacity=line_opacity/100)
-    else:
-        deck = route_deck(graph,result,origin,destination,style=style_name,line_opacity=line_opacity/100,
-                          show_routes={"Both":"both","Shortest only":"shortest","Lower fuel only":"fuel"}[visible])
-    scene = (request_key,result is not None,st.session_state.get("map_fit_epoch",0))
-    key = "route-map-"+hashlib.sha256(repr(scene).encode()).hexdigest()[:16]
-    st.pydeck_chart(deck,key=key,height=550,on_select="rerun",
-        alt="Fairview road map with A/B location markers and orange shortest, purple lower-fuel, or teal shared route sections")
-    if result is not None:
-        st.markdown(":orange-badge[Shortest route] :violet-badge[Lower-fuel route] :green-badge[Shared sections] **A** Start / **B** Finish")
-        st.caption("Teal means both routes use the same section. Selecting one route shows it in its own color.")
-        rows = comparison_rows(result)
-        st.dataframe(pd.DataFrame(rows),hide_index=True,alt="Distance and fuel comparison for the two routes")
-        with st.expander("Fuel comparison chart"):
-            st.bar_chart(pd.DataFrame(rows),x="Route",y="Predicted fuel (L)")
-    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Tiles require internet. Markers show connected road points, not verified building entrances.")
-
+            planner.error(f"Route comparison unavailable: {exc}")
+    with planner:
+        if result is not None:
+            first, second = st.columns(2)
+            first.metric("Predicted fuel saved",f"{result.fuel_saved_liters:.4f} L",border=True)
+            second.metric("Predicted savings","N/A" if result.fuel_saved_percent is None else f"{result.fuel_saved_percent:.2f}%",border=True)
+            st.success(route_tradeoff(result),icon=":material/eco:")
+            if metadata["prediction_source"] == "simulation-trained":
+                st.warning("Fuel estimates are simulated, not measured.")
+        else:
+            with st.container(border=True):
+                st.markdown("### Choose your start and finish")
+                st.caption("Choose two locations to compare distance with simulated fuel use.")
+                st.markdown(":orange-badge[Shortest distance] :violet-badge[Lower fuel]")
+        with st.expander("Map appearance"):
+            style = st.segmented_control("Map background",["Color streets","Dark contrast"],default="Color streets",key="map_background", persist_state="session")
+            line_opacity = st.slider("Line opacity (%)",min_value=20,max_value=100,value=65,step=5,key="line_opacity",
+                help="Lower values reveal more of the map; road labels stay visible.", persist_state="session")
+    with map_toolbar_area:
+        toolbar, fit = st.columns([3,1],vertical_alignment="bottom")
+        with toolbar:
+            visible = st.segmented_control("Show routes",["Both","Shortest only","Lower fuel only"],
+                default="Both",key="route_visibility",disabled=result is None, persist_state="session") or "Both"
+        if fit.button("Fit both routes",disabled=result is None,key="fit_routes",icon=":material/fit_screen:"):
+            st.session_state["map_fit_epoch"] = st.session_state.get("map_fit_epoch",0)+1
+    with map_area:
+        style_name = "dark" if style == "Dark contrast" else "road"
+        if result is None:
+            deck = overview_deck(graph,origin,destination,style=style_name,line_opacity=line_opacity/100)
+        else:
+            deck = route_deck(graph,result,origin,destination,style=style_name,line_opacity=line_opacity/100,
+                show_routes={"Both":"both","Shortest only":"shortest","Lower fuel only":"fuel"}[visible])
+        scene = (request_key,result is not None,st.session_state.get("map_fit_epoch",0))
+        key = "route-map-"+hashlib.sha256(repr(scene).encode()).hexdigest()[:16]
+        st.pydeck_chart(deck,key=key,height=620,on_select="rerun",
+            alt="Fairview street map with A/B markers and orange shortest, purple lower-fuel and teal shared route sections")
+        st.markdown(":orange-badge[Shortest] :violet-badge[Lower fuel] :green-badge[Shared] **A** Start | **B** Finish")
+        st.caption("OpenStreetMap contributors | CARTO basemap | Markers connect to saved road points; building entrances and access distances are not included.")
+        if result is not None:
+            cards = st.columns(2)
+            for card, label, route, badge in ((cards[0],"Shortest distance",result.shortest,"orange"),(cards[1],"Lower simulated fuel",result.lowest_fuel,"violet")):
+                with card.container(border=True):
+                    st.markdown(f":{badge}-badge[{label}]")
+                    st.markdown(f"### {route.distance_m/1000:.2f} km")
+                    st.caption(f"{route.fuel_liters:.3f} L simulated fuel")
+            profile = elevation_profile(graph,result.shortest,"Shortest")+elevation_profile(graph,result.lowest_fuel,"Lower fuel")
+            if profile:
+                st.markdown("#### Hills along the trip")
+                chart = alt.Chart(pd.DataFrame(profile)).mark_line(strokeWidth=2.5).encode(
+                    x=alt.X("Distance (km):Q"),y=alt.Y("Elevation (m):Q",scale=alt.Scale(zero=False)),
+                    color=alt.Color("Route:N",scale=alt.Scale(domain=["Shortest","Lower fuel"],range=["#ea580c","#6d28d9"]),legend=alt.Legend(orient="bottom")),
+                    tooltip=["Route:N","Distance (km):Q","Elevation (m):Q"]).properties(height=140)
+                st.altair_chart(chart,width="stretch",alt="Distance versus saved endpoint elevation for both routes")
+                st.caption("Sampled road-end elevations, connected for comparison; not a detailed survey of every hill.")
+            with st.expander("Full route numbers"):
+                rows = comparison_rows(result)
+                st.dataframe(pd.DataFrame(rows),hide_index=True,alt="Distance and simulated fuel for both routes")
+                st.bar_chart(pd.DataFrame(rows),x="Route",y="Predicted fuel (L)")
 
 
 def render_routes():
@@ -310,7 +342,6 @@ def render_data():
         st.caption("The saved OpenStreetMap reference is a download link, not a routable graph.")
 
 
-
 def render_evaluation():
     folder = ROOT / "data/processed/cp3"
     report = folder / "summary.json"
@@ -364,15 +395,26 @@ def render_evaluation():
         st.error(f"Could not read saved CP3 evaluation: {exc}")
 
 
-st.set_page_config(page_title="EcoRoute", layout="wide")
-st.title("EcoRoute")
-st.caption(f"Study area: {STUDY_AREA_LABEL}")
-st.write("Compare shortest-distance and predicted lowest-fuel driving routes.")
-routes_tab, data_tab, evaluation_tab = st.tabs(["Route comparison", "Current data", "Evaluation evidence"])
-with routes_tab:
+BRAND_ASSETS = ROOT / "assets" / "branding"
+app_icon = BRAND_ASSETS / "ecoroute-icon.png"
+st.set_page_config(page_title="EcoRoute | Route planner", page_icon=str(app_icon) if app_icon.is_file() else ":material/route:", layout="wide")
+brand, location = st.columns([3,1],vertical_alignment="center")
+with brand:
+    logo = BRAND_ASSETS / "ecoroute-light.png"
+    if logo.is_file():
+        st.html(logo_markup(logo), width="content")
+    else:
+        st.title("EcoRoute",anchor=False)
+    st.caption("Compare distance and simulated fuel, side by side.")
+with location:
+    st.badge("Fairview, NC",icon=":material/location_on:",color="green")
+    st.caption(f"Study area: {STUDY_AREA_LABEL}")
+workspace_nav, map_toolbar_area = st.columns([1,2.25],gap="large",vertical_alignment="top")
+with workspace_nav:
+    screen = st.segmented_control("Workspace",["Plan a route","Evaluation evidence","Current data"],default="Plan a route",key="workspace", persist_state="session") or "Plan a route"
+if screen == "Plan a route":
     render_routes()
-with data_tab:
-    render_data()
-
-with evaluation_tab:
+elif screen == "Evaluation evidence":
     render_evaluation()
+else:
+    render_data()
