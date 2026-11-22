@@ -12,6 +12,8 @@ from src.dashboard import (
     comparison_rows, file_digest, load_prepared_graph, load_gis_preview, read_preview, route_paths, load_evaluation_summary,
 )
 from src.locations import location_labels, snap_coordinate
+from src.geocoding import search_address, normalize_address, AddressLookupError
+from src.map_view import route_deck, grade_color
 from src.fuel_costs import directly_simulated_graph
 from src.routing import compare_routes
 from src.study_area import DEFAULT_GRAPH_PATH, STUDY_AREA_LABEL, FAIRVIEW_CENTER
@@ -49,13 +51,16 @@ def render_gis_preview():
     edges.metric("Directed road edges", f"{graph.number_of_edges():,}")
     heights = [float(attrs["elevation"]) for _, attrs in graph.nodes(data=True)]
     elevation.metric("Elevation range", f"{min(heights):.0f}-{max(heights):.0f} m")
+    for feature in features["features"]:
+        feature["properties"]["color"] = grade_color(feature["properties"]["grade_percent"] / 100)
+    st.caption("Road slopes: teal below 5%, amber 5-10%, purple 10% or steeper.")
     st.pydeck_chart(pdk.Deck(
         layers=[pdk.Layer("GeoJsonLayer", data=features, stroked=True, filled=False,
-                          get_line_color=[35, 100, 220], get_line_width=3,
+                          get_line_color="properties.color", get_line_width=3,
                           line_width_units=pdk.types.String("pixels"),
                           line_width_min_pixels=1, line_width_max_pixels=4,
                           pickable=True)],
-        map_provider="carto", map_style="light",
+        map_provider="carto", map_style="road",
         initial_view_state=pdk.ViewState(latitude=FAIRVIEW_CENTER[0], longitude=FAIRVIEW_CENTER[1], zoom=12),
         tooltip={"text": "Length: {length} m\nSigned grade: {grade_percent}%"},
     ), key="fairview-gis-map", alt="Fairview driving network with road lengths and signed slopes")
@@ -74,6 +79,56 @@ def cached_direct_graph(path: str, metadata_path: str, graph_hash: str, metadata
     return directly_simulated_graph(graph)
 
 
+
+def address_locations(graph):
+    st.caption("Enter numbered street addresses. Search sends them to the U.S. Census geocoder; internet is required. Locations are approximate, not verified building entrances.")
+    with st.form("address_search"):
+        first, second = st.columns(2)
+        start = first.text_input("Starting address", placeholder="1 Taylor Road, Fairview, NC 28730", key="address_start")
+        end = second.text_input("Ending address", placeholder="Number, street, city, state or ZIP", key="address_end")
+        submitted = st.form_submit_button("Find addresses", icon=":material/search:")
+    if submitted:
+        st.session_state.pop("address_matches", None)
+        st.session_state.pop("address_origin", None)
+        st.session_state.pop("address_destination", None)
+        try:
+            # Validate both fields before making either network request.
+            normalize_address(start)
+            normalize_address(end)
+            with st.spinner("Finding address matches..."):
+                matches = (search_address(start), search_address(end))
+            st.session_state["address_matches"] = matches
+            st.session_state["address_queries"] = (start,end)
+        except AddressLookupError as exc:
+            st.error(str(exc))
+            return None
+    matches = st.session_state.get("address_matches")
+    if matches is None:
+        st.info("Enter the starting and ending addresses, then choose Find addresses.")
+        return None
+    if not matches[0] or not matches[1]:
+        missing = "starting" if not matches[0] else "ending"
+        st.warning(f"No match for the {missing} address. Check the building number, street, city and ZIP code. Business names alone are not supported.")
+        return None
+    first, second = st.columns(2)
+    a = first.selectbox("Confirm starting address", range(len(matches[0])), index=None,
+                        format_func=lambda i: matches[0][i].label, key="address_origin")
+    b = second.selectbox("Confirm ending address", range(len(matches[1])), index=None,
+                         format_func=lambda i: matches[1][i].label, key="address_destination")
+    st.caption("Address matches: U.S. Census Bureau, MAF/TIGER address ranges. Confirm both matches before calculating.")
+    if a is None or b is None:
+        return None
+    try:
+        start_match, end_match = matches[0][a], matches[1][b]
+        origin, gap1 = snap_coordinate(graph, start_match.latitude, start_match.longitude)
+        destination, gap2 = snap_coordinate(graph, end_match.latitude, end_match.longitude)
+    except ValueError as exc:
+        st.error(f"This address cannot connect to the saved Fairview network: {exc}")
+        return None
+    st.caption(f"A: {start_match.label} | B: {end_match.label}. Connected to saved road points {gap1:.0f} m and {gap2:.0f} m away. These connections are not included in the distance or fuel totals.")
+    return origin,destination
+
+
 def render_comparison(graph, metadata):
     st.caption(
         f"Saved ML model: {metadata['model_id']} | Vehicle: {metadata['vehicle_profile']} | "
@@ -83,9 +138,14 @@ def render_comparison(graph, metadata):
         st.warning("These predictions come from a simulation-trained model.")
     nodes = list(graph.nodes)
     labels = location_labels(graph)
-    mode = st.segmented_control("Choose locations using", ["Road names", "Coordinates"],
+    mode = st.segmented_control("Choose locations using", ["Addresses", "Road names", "Coordinates"],
                                 default="Road names", key="location_mode") or "Road names"
-    if mode == "Coordinates":
+    if mode == "Addresses":
+        locations = address_locations(graph)
+        if locations is None:
+            return
+        origin, destination = locations
+    elif mode == "Coordinates":
         first, second = st.columns(2)
         lat1 = first.number_input("Starting latitude", min_value=-90.0, max_value=90.0,
                                   value=float(graph.nodes[nodes[0]]["y"]), format="%.6f", key="start_lat")
@@ -107,6 +167,7 @@ def render_comparison(graph, metadata):
         origin = st.selectbox("Starting road location", nodes, key="origin", format_func=labels.get)
         destination = st.selectbox("Ending road location", nodes, index=min(1, len(nodes)-1), key="destination", format_func=labels.get)
         st.caption("Type a road name to search. Coordinates distinguish different points on the same road.")
+    method = "Saved ML predictions"
     if metadata["prediction_source"] == "simulation-trained" and all("grade" in d for _, _, d in graph.edges(data=True)):
         method = st.segmented_control("Fuel calculation", ["Direct simulation", "Saved ML predictions"],
                                       default="Direct simulation", key="fuel_method") or "Direct simulation"
@@ -118,41 +179,29 @@ def render_comparison(graph, metadata):
                 st.error(f"Direct simulation unavailable: {exc}")
                 return
         st.caption(f"Displayed fuel estimates use: {method}.")
-    if not st.button("Calculate routes", type="primary"):
+    request_key = (origin, destination, method, metadata["graph_sha256"], metadata["model_id"])
+    if st.button("Calculate routes", type="primary"):
+        st.session_state["route_request"] = request_key
+    if st.session_state.get("route_request") != request_key:
         st.info("Select endpoints, then calculate to compare predicted route costs.")
         return
     try:
         result = compare_routes(graph, origin, destination)
         rows = comparison_rows(result)
-        colors = ([35, 100, 220], [20, 160, 100])
-        segments = []
-        for route, row, color in zip((result.shortest, result.lowest_fuel), rows, colors):
-            segments.extend({"path": path, "route": row["Route"], "color": color}
-                            for path in route_paths(graph, route))
     except nx.NetworkXNoPath:
         st.error("No driving route connects these nodes in this direction. Choose another pair.")
         return
     except (ValueError, TypeError, nx.NodeNotFound) as exc:
         st.error(f"Route comparison unavailable: {exc}")
         return
-    st.caption("Blue: shortest distance. Green: lowest predicted fuel. Overlapping routes may hide one color.")
-    layer = pdk.Layer("PathLayer", segments, get_path="path", get_color="color",
-                      get_width=5, width_units=pdk.types.String("pixels"),
-                      width_min_pixels=2, width_max_pixels=5, pickable=True)
-    marker = pdk.Layer(
-        "ScatterplotLayer",
-        [{"position": [graph.nodes[n]["x"], graph.nodes[n]["y"]], "route": label}
-         for n, label in ((origin, "Origin"), (destination, "Destination"))],
-        get_position="position", get_fill_color=[240, 155, 35],
-        get_radius=8, radius_units=pdk.types.String("pixels"), pickable=True,
-    )
-    st.pydeck_chart(pdk.Deck(
-        layers=[layer, marker], map_provider="carto", map_style="light",
-        initial_view_state=pdk.ViewState(latitude=graph.nodes[origin]["y"],
-                                        longitude=graph.nodes[origin]["x"], zoom=13),
-        tooltip={"text": "{route}"},
-    ))
-    st.caption("Roads: OpenStreetMap contributors. Segments without stored geometry use their endpoints. Map tiles require internet.")
+    st.markdown(":orange-badge[Shortest route] :violet-badge[Lower-fuel route] :green-badge[Shared sections]  **A** Start / **B** Finish")
+    st.caption("Orange follows the shortest route, purple the lower-fuel route, and teal marks sections used by both.")
+    style = st.segmented_control("Map background", ["Color streets", "Dark contrast"], default="Color streets", key="map_background")
+    st.pydeck_chart(route_deck(graph, result, origin, destination,
+                             style="dark" if style == "Dark contrast" else "road"),
+                    key="route-map", height=550,
+                    alt="Street map with orange shortest-route sections, purple lower-fuel sections, teal shared sections, and A/B endpoints")
+    st.caption("Roads: OpenStreetMap contributors. Basemap: CARTO. Map fits both routes; tiles require internet. Markers show the connected road points, not building entrances.")
     first, second = st.columns(2)
     first.metric("Predicted fuel saved", f"{result.fuel_saved_liters:.4f} L")
     second.metric("Predicted savings", "N/A" if result.fuel_saved_percent is None

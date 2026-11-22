@@ -105,9 +105,12 @@ def test_ui_renders_computed_routes_and_handles_unreachable_pair(prepared):
     assert app.metric[1].value == "60.00%"
     assert app.dataframe[0].value["Distance (km)"].tolist() == [0.1, 0.16]
     map_spec = json.loads(app.get("deck_gl_json_chart")[0].proto.json)
-    assert map_spec["layers"][0]["widthUnits"] == "pixels"
-    assert map_spec["layers"][0]["widthMaxPixels"] == 5
-    assert map_spec["layers"][1]["radiusUnits"] == "pixels"
+    layers = {layer["id"]: layer for layer in map_spec["layers"]}
+    assert layers["route-colors"]["widthUnits"] == "pixels"
+    assert layers["route-colors"]["widthMaxPixels"] == 5
+    assert layers["route-outline"]["widthMaxPixels"] == 9
+    assert layers["endpoints"]["radiusUnits"] == "pixels"
+    assert map_spec["mapStyle"].endswith("voyager-gl-style/style.json")
     app.selectbox(key="origin").select(2)
     app.selectbox(key="destination").select(1)
     app.button[0].click().run()
@@ -187,3 +190,43 @@ def test_ui_direct_option_preserves_saved_ml_choice(prepared):
     app.button[0].click().run()
     assert not app.exception and not app.error
     assert app.metric[0].value == "0.3000 L"
+
+
+def test_address_lookup_requires_search_and_confirmation(prepared, monkeypatch):
+    from src.geocoding import AddressMatch
+    calls=[]
+    def lookup(query):
+        calls.append(query)
+        return (AddressMatch(query,35.59,-82.55 if query.startswith("1 ") else -82.54),)
+    monkeypatch.setattr("src.geocoding.search_address",lookup)
+    _,graph_path,_=prepared
+    app=AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    app.segmented_control(key="location_mode").set_value("Addresses").run()
+    assert not calls and not app.exception
+    app.text_input(key="address_start").set_value("1 Test Road, Fairview, NC")
+    app.text_input(key="address_end").set_value("2 Test Road, Fairview, NC")
+    app.form_submit_button[0].click().run()
+    assert len(calls)==2 and not app.exception
+    assert app.selectbox(key="address_origin").value is None
+    app.selectbox(key="address_origin").set_value(0)
+    app.selectbox(key="address_destination").set_value(0).run()
+    next(b for b in app.button if b.label=="Calculate routes").click().run()
+    assert not app.exception and not app.error
+    assert app.metric[0].value=="0.3000 L"
+    app.segmented_control(key="map_background").set_value("Dark contrast").run()
+    assert not app.exception and app.metric[0].value=="0.3000 L"
+    assert len(calls)==2
+    spec=json.loads(app.get("deck_gl_json_chart")[0].proto.json)
+    assert "dark-matter" in spec["mapStyle"]
+
+
+def test_address_lookup_empty_response_is_explained(prepared, monkeypatch):
+    monkeypatch.setattr("src.geocoding.search_address",lambda query:())
+    _,graph_path,_=prepared
+    app=AppTest.from_file(str(copy_app(graph_path.parents[2]))).run(timeout=30)
+    app.segmented_control(key="location_mode").set_value("Addresses").run()
+    app.text_input(key="address_start").set_value("1 Test Road, Fairview, NC")
+    app.text_input(key="address_end").set_value("2 Test Road, Fairview, NC")
+    app.form_submit_button[0].click().run()
+    assert not app.exception
+    assert any("No match" in w.value for w in app.warning)
